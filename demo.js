@@ -42,9 +42,13 @@ function setWave() {
 
 
 function go() {
+    var t = performance.now()
+    if (t - lt < 300) return
     fx.play(settings)
+    lt = t
 }
-window.addEventListener('keydown', function(ev) {
+var lt = 0
+window.addEventListener('keydown', function (ev) {
     if (ev.keyCode === 32) go()
 })
 

@@ -7,20 +7,6 @@ module.exports = new FX()
 
 function FX() {
 
-    // var settings = {
-    //     duration: 0.5,
-    //     frequency: 440,
-    //     sweepMult: 0.1,
-    //     source: "sine",
-    //     harmonics: 0,
-    //     envelope: {
-    //         attack: 0.005,
-    //         decay: 0.1,
-    //         sustain: 0.9,
-    //         release: 1,
-    //     },
-    // }
-
     // input chain
     var input = new Tone.Gain(1)
     var crusher = new Tone.BitCrusher(8)
@@ -33,22 +19,33 @@ function FX() {
 
 
     // instruments
-    var defaults = {
-        envelope: {
-            releaseCurve: 'linear',
-        }
-    }
-    var synth = new Tone.Synth(defaults).connect(tremolo)
-    var noise = new Tone.NoiseSynth(defaults).connect(tremolo)
+    var synths = []
+    var noises = []
+    while (synths.length < 3) synths.push(new Tone.Synth())
+    while (noises.length < 2) noises.push(new Tone.NoiseSynth())
+
+    synths.concat(noises).forEach(v => {
+        v.envelope.releaseCurve = 'linear'
+        v.connect(input)
+    })
+
+    var getSynth = (function() {
+        var i = 0, n = synths.length
+        return function() { return synths[i++ % n] }
+    })()
+    var getNoise = (function() {
+        var i = 0, n = synths.length
+        return function() { return synths[i++ % n] }
+    })()
 
     window.tone = Tone
-    window.t = tremolo
 
 
 
     this.play = function (settings) {
         var env = settings.envelope
-        var time = getADSTime(settings.duration, env)
+        var noteTime = settings.duration + env.attack + env.decay
+        var totalTime = noteTime + env.release
 
         // input chain
         rampParam(Tone.Master.volume, settings.volume)
@@ -66,14 +63,19 @@ function FX() {
 
         // instruments
         if (/noise/.test(settings.source)) {
+            
+            var noise = getNoise()
             noise.noise.type = settings.source.split(' ')[0]
             noise.envelope.attack = env.attack
             noise.envelope.decay = env.decay
             noise.envelope.sustain = env.sustain
             noise.envelope.release = env.release
 
-            noise.triggerAttackRelease(time)
+            noise.triggerAttackRelease(noteTime)
+
         } else {
+
+            var synth = getSynth()
             var type = settings.source
             if (settings.harmonics > 0) type += settings.harmonics
             synth.oscillator.type = type
@@ -82,10 +84,10 @@ function FX() {
             synth.envelope.sustain = env.sustain
             synth.envelope.release = env.release
 
-            synth.triggerAttackRelease(settings.frequency, time)
+            synth.triggerAttackRelease(settings.frequency, noteTime)
             if (settings.freqSweepMult !== 1) {
-                var dur = time + settings.envelope.release
-                synth.frequency.rampTo(settings.frequency * settings.freqSweepMult, dur)
+                var f = settings.frequency * settings.freqSweepMult
+                synth.frequency.rampTo(f, totalTime)
             }
         }
     }
@@ -93,9 +95,6 @@ function FX() {
 }
 
 
-function getADSTime(duration, envelope) {
-    return duration + envelope.attack + envelope.decay
-}
 
 function rampParam(param, value) {
     if (param.value != value) param.rampTo(value, 0.02)
