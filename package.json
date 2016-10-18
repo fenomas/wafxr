@@ -1,0 +1,15 @@
+{
+  "name": "wafxr",
+  "version": "0.0.1",
+  "description": "Testing",
+  "main": "wafxr.js",
+  "scripts": {
+    "test": "webpack-dev-server --host 0.0.0.0"
+  },
+  "author": "Andy Hall",
+  "license": "ISC",
+  "dependencies": {
+    "tone": "^0.8.0"
+  },
+  "devDependencies": {}
+}
