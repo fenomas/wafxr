@@ -2,56 +2,24 @@
 /* globals dat */
 
 var fx = require('.')
+window.fx = fx
 
+// base settings object - directly accessed by dat-gui
+var settings = fx.getDefaults()
+settings.volume = -10
 
-
-// settings object
-var settings = {
-    duration: 0.4,
-    sustain: 0.9,
-    attack: 0.01,
-    decay: 0.01,
-    release: 0.4,
-
-    frequency: 500,
-    sweep: 1,
-    repeat: 0,
-    jumpAt1: 0.33,
-    jumpBy1: 0,
-    jumpAt2: 0.66,
-    jumpBy2: 0,
-
-    volume: -10,
-    source: "triangle",
-    harmonics: 0,
-    pulseWidth: 0.5,
-
-    bitcrush: 0,
-    tremolo: 0,
-    tremoloFreq: 10,
-    vibrato: 0,
-    vibratoFreq: 10,
-
-    lowpass: 22000,
-    lowpassSweep: 0,
-    highpass: 0,
-    highpassSweep: 0,
-}
-
-
-
+// additional settings for menus
 var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 var others = {
     sourceNum: sourceNames.indexOf(settings.source),
 }
-
 function setWave() {
     settings.source = sourceNames[others.sourceNum]
 }
 
 
 
-
+// play a note on any settings update, with time limiter
 function go() {
     var t = performance.now()
     if (t - lt < 300) return
@@ -70,7 +38,7 @@ window.addEventListener('keydown', function (ev) {
 var opts = {
     autoPlace: false,
     hideable: false,
-    width: 450,
+    width: 400,
 }
 var gui1 = new dat.GUI(opts)
 var gui2 = new dat.GUI(opts)
@@ -89,20 +57,20 @@ f.add(settings, 'harmonics', 0, 6).step(1).onChange(function () { setWave(); go(
 f.add(settings, 'pulseWidth', 0, 1).step(0.01).onChange(go)
 
 f = gui1.addFolder('Envelope')
-f.add(settings, 'duration', 0.01, 1).step(0.01).onChange(go)
-f.add(settings, 'sustain', 0, 1).step(0.1).name('sustain level').onChange(go)
 f.add(settings, 'attack', 0, 1).step(0.001).onChange(go)
 f.add(settings, 'decay', 0, 1).step(0.001).onChange(go)
+f.add(settings, 'sustain', 0.01, 2).step(0.01).onChange(go)
 f.add(settings, 'release', 0, 1).step(0.001).onChange(go)
+f.add(settings, 'sustainLevel', 0, 1).step(0.1).name('sustain level').onChange(go)
 
 f = gui1.addFolder('Pitch')
 f.add(settings, 'frequency', 100, 2000).step(1).onChange(go)
-f.add(settings, 'sweep', -2, 2).step(0.1).name('frequency sweep').onChange(go)
+f.add(settings, 'sweep', -2, 2).step(0.1).name('　　↑ sweep').onChange(go)
 f.add(settings, 'repeat', 0, 20).step(0.1).name('repeat (Hz)').onChange(go)
-f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('jump 1 time').onChange(go)
-f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
-f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('jump 1 time').onChange(go)
+f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 1 amount').onChange(go)
+f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('　　↑ onset').onChange(go)
 f.add(settings, 'jumpBy2', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
+f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('　　↑ onset').onChange(go)
 
 f = gui2.addFolder('Effects')
 f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').onChange(go)
@@ -113,9 +81,9 @@ f.add(settings, 'vibratoFreq', 0, 20).step(0.5).name('vibrato frequency').onChan
 
 var maxFq = 22000
 f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').onChange(go)
-f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('lowpass sweep').onChange(go)
+f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').onChange(go)
 f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').onChange(go)
-f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('highpass sweep').onChange(go)
+f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').onChange(go)
 
 
 window.gui1 = gui1
