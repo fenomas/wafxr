@@ -48,55 +48,24 @@
 	/* globals dat */
 
 	var fx = __webpack_require__(1)
+	window.fx = fx
 
+	// base settings object - directly accessed by dat-gui
+	var settings = fx.getDefaults()
+	settings.volume = -10
 
-
-	// settings object
-	var settings = {
-	    duration: 0.4,
-	    sustain: 0.9,
-	    attack: 0.01,
-	    decay: 0.01,
-	    release: 0.4,
-
-	    frequency: 500,
-	    sweep: 1,
-	    repeat: 0,
-	    jumpAt1: 0.33,
-	    jumpBy1: 0,
-	    jumpAt2: 0.66,
-	    jumpBy2: 0,
-
-	    volume: -10,
-	    source: "triangle",
-	    harmonics: 0,
-
-	    bitcrush: 0,
-	    tremolo: 0,
-	    tremoloFreq: 10,
-	    vibrato: 0,
-	    vibratoFreq: 10,
-
-	    lowpass: 22000,
-	    lowpassSweep: 0,
-	    highpass: 0,
-	    highpassSweep: 0,
-	}
-
-
-
-	var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'white noise', 'brown noise', 'pink noise']
+	// additional settings for menus
+	var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 	var others = {
 	    sourceNum: sourceNames.indexOf(settings.source),
 	}
-
 	function setWave() {
 	    settings.source = sourceNames[others.sourceNum]
 	}
 
 
 
-
+	// play a note on any settings update, with time limiter
 	function go() {
 	    var t = performance.now()
 	    if (t - lt < 300) return
@@ -115,7 +84,7 @@
 	var opts = {
 	    autoPlace: false,
 	    hideable: false,
-	    width: 450,
+	    width: 400,
 	}
 	var gui1 = new dat.GUI(opts)
 	var gui2 = new dat.GUI(opts)
@@ -131,22 +100,23 @@
 	f.add(others, 'sourceNum', 0, sourceNames.length - 1).step(1).onChange(function () { setWave(); go() })
 	f.add(settings, 'source').name('source name').listen()
 	f.add(settings, 'harmonics', 0, 6).step(1).onChange(function () { setWave(); go() })
+	f.add(settings, 'pulseWidth', 0, 1).step(0.01).onChange(go)
 
 	f = gui1.addFolder('Envelope')
-	f.add(settings, 'duration', 0.01, 1).step(0.01).onChange(go)
-	f.add(settings, 'sustain', 0, 1).step(0.1).name('sustain level').onChange(go)
 	f.add(settings, 'attack', 0, 1).step(0.001).onChange(go)
 	f.add(settings, 'decay', 0, 1).step(0.001).onChange(go)
+	f.add(settings, 'sustain', 0.01, 2).step(0.01).onChange(go)
 	f.add(settings, 'release', 0, 1).step(0.001).onChange(go)
+	f.add(settings, 'sustainLevel', 0, 1).step(0.1).name('sustain level').onChange(go)
 
 	f = gui1.addFolder('Pitch')
 	f.add(settings, 'frequency', 100, 2000).step(1).onChange(go)
-	f.add(settings, 'sweep', -2, 2).step(0.1).name('frequency sweep').onChange(go)
+	f.add(settings, 'sweep', -2, 2).step(0.1).name('　　↑ sweep').onChange(go)
 	f.add(settings, 'repeat', 0, 20).step(0.1).name('repeat (Hz)').onChange(go)
-	f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('jump 1 time').onChange(go)
-	f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
-	f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('jump 1 time').onChange(go)
+	f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 1 amount').onChange(go)
+	f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('　　↑ onset').onChange(go)
 	f.add(settings, 'jumpBy2', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
+	f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('　　↑ onset').onChange(go)
 
 	f = gui2.addFolder('Effects')
 	f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').onChange(go)
@@ -157,9 +127,9 @@
 
 	var maxFq = 22000
 	f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').onChange(go)
-	f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('lowpass sweep').onChange(go)
+	f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').onChange(go)
 	f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').onChange(go)
-	f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('highpass sweep').onChange(go)
+	f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').onChange(go)
 
 
 	window.gui1 = gui1
@@ -183,44 +153,81 @@
 	module.exports = new FX()
 
 
+	/*
+	 *  
+	 *   Defaults - these are all the options wafxr recognizes
+	 *  
+	*/
+
+	var defaults = {
+	    attack: 0.01,
+	    decay: 0.01,
+	    sustain: 0.4,
+	    release: 0.4,
+	    sustainLevel: 0.8,
+
+	    frequency: 440,
+	    sweep: 0,
+	    repeat: 0,
+	    jumpAt1: 0.33,
+	    jumpBy1: 0,
+	    jumpAt2: 0.66,
+	    jumpBy2: 0,
+
+	    volume: 0,
+	    source: "triangle",
+	    harmonics: 0,
+	    pulseWidth: 0.5,
+
+	    bitcrush: 0,
+	    tremolo: 0,
+	    tremoloFreq: 10,
+	    vibrato: 0,
+	    vibratoFreq: 10,
+
+	    lowpass: 22000,
+	    lowpassSweep: 0,
+	    highpass: 0,
+	    highpassSweep: 0,
+	}
+
+
+
+	/*
+	 *  
+	 *   Main module
+	 *  
+	*/
+
 	function FX() {
 
 	    // input chain
 	    var input = new Tone.Gain(1)
 	    var crusher = new Tone.BitCrusher(8)
-	    crusher.wet.value = 0
-
 	    var tremolo = new Tone.Tremolo(5, 1)
-	    tremolo.wet.value = 0
-
 	    var vibrato = new Tone.Vibrato(5, 1)
+	    var lowpass = new Tone.Filter(22000, 'lowpass')
+	    var highpass = new Tone.Filter(0, 'highpass')
+
+	    crusher.wet.value = 0
+	    tremolo.wet.value = 0
 	    vibrato.wet.value = 0
-
-	    var lowpass = new Tone.Filter (22000, 'lowpass')
-	    var highpass = new Tone.Filter (0, 'highpass')
-
+	    tremolo.start()
 	    input.chain(vibrato, tremolo, lowpass, highpass, crusher, Tone.Master)
 
-
-	    // instruments
+	    // instrument pool
 	    var synths = []
 	    var noises = []
-	    while (synths.length < 3) synths.push(new Tone.Synth())
+	    while (synths.length < 1) synths.push(new Tone.Synth())
 	    while (noises.length < 2) noises.push(new Tone.NoiseSynth())
 
-	    synths.concat(noises).forEach(v => {
+	    synths.concat(noises).forEach(function (v) {
 	        v.envelope.releaseCurve = 'linear'
 	        v.connect(input)
 	    })
 
-	    var getSynth = (function () {
-	        var i = 0, n = synths.length
-	        return function () { return synths[i++ % n] }
-	    })()
-	    var getNoise = (function () {
-	        var i = 0, n = noises.length
-	        return function () { return noises[i++ % n] }
-	    })()
+	    var getSynth = makeObjectPoolGetter(synths)
+	    var getNoise = makeObjectPoolGetter(noises)
 
 	    window.Tone = Tone
 	    window.synth = synths[0]
@@ -231,20 +238,35 @@
 	    var signal = new Tone.TimelineSignal()
 
 
+	    /*
+	     *      APIs 
+	    */
+
+	    this.getDefaults = function () {
+	        var obj = {}
+	        for (var s in defaults) obj[s] = defaults[s]
+	        return obj
+	    }
+
 
 	    this.play = function (settings) {
-	        var s = settings
-	        var holdTime = s.duration + s.attack + s.decay
-	        var duration = holdTime + s.release
+	        var s = settings || {}
+	        var attack = (s.attack === undefined) ? defaults.attack : s.attack
+	        var decay = (s.decay === undefined) ? defaults.decay : s.decay
+	        var sustain = (s.sustain === undefined) ? defaults.sustain : s.sustain
+	        var release = (s.release === undefined) ? defaults.release : s.release
+	        var sustainLevel = (s.sustainLevel === undefined) ? defaults.sustainLevel : s.sustainLevel
+	        var holdTime = sustain + attack + decay
+	        var duration = holdTime + release
 
 	        // input chain
-	        rampParam(Tone.Master.volume, s.volume)
 
 	        tremolo.wet.value = (s.tremolo) ? 1 : 0
 	        if (s.tremolo) {
 	            tremolo.depth.value = s.tremolo
 	            tremolo.frequency.value = s.tremoloFreq || 0
 	        }
+	        window.t = tremolo
 
 	        vibrato.wet.value = (s.vibrato) ? 1 : 0
 	        if (s.vibrato) {
@@ -252,12 +274,12 @@
 	            vibrato.frequency.value = s.vibratoFreq || 0
 	        }
 
-	        lowpass.frequency.value = s.lowpass || 22000
+	        lowpass.frequency.value = s.lowpass || defaults.lowpass
 	        if (s.lowpass && s.lowpassSweep) {
 	            lowpass.frequency.rampTo(s.lowpass + s.lowpassSweep, duration)
 	        }
 
-	        highpass.frequency.value = s.highpass || 0
+	        highpass.frequency.value = s.highpass || defaults.highpass
 	        if (s.highpass && s.highpassSweep) {
 	            highpass.frequency.rampTo(s.highpass + s.highpassSweep, duration)
 	        }
@@ -269,37 +291,42 @@
 	        if (/noise/.test(s.source)) {
 
 	            var noise = getNoise()
+	            noise.volume.value = s.volume || 0
 	            noise.noise.type = s.source.split(' ')[0]
-	            noise.envelope.attack = s.attack
-	            noise.envelope.decay = s.decay
-	            noise.envelope.sustain = s.sustain
-	            noise.envelope.release = s.release
+	            noise.envelope.attack = attack
+	            noise.envelope.decay = decay
+	            noise.envelope.sustain = sustainLevel
+	            noise.envelope.release = release
 
 	            noise.triggerAttackRelease(holdTime)
 
 	        } else {
 
 	            var synth = getSynth()
-	            var type = s.source
-	            if (s.harmonics > 0) type += s.harmonics
+	            synth.volume.value = s.volume || 0
+	            var type = s.source || defaults.source
+	            var isPulse = (type == 'pulse')
+	            if (!isPulse && s.harmonics > 0) type += s.harmonics
 	            synth.oscillator.type = type
-	            synth.envelope.attack = s.attack
-	            synth.envelope.decay = s.decay
-	            synth.envelope.sustain = s.sustain
-	            synth.envelope.release = s.release
+	            if (isPulse) synth.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
+	            synth.envelope.attack = attack
+	            synth.envelope.decay = decay
+	            synth.envelope.sustain = sustainLevel
+	            synth.envelope.release = release
 
 	            synth.triggerAttackRelease(0, holdTime)
 
 	            // set up necessary frequency values with sweeps and jumps
 	            // times are scaled to t0=0, tn=1, for now
-	            var f0 = s.frequency
+	            var freqSetting = s.frequency || defaults.frequency
+	            var f0 = synth.toFrequency(freqSetting)
 	            var fn = s.sweep ? f0 * (1 + s.sweep) : f0
 	            var t0 = 0
 	            var tn = 1
 
 	            // calculate ramp/jump values
-	            var t1 = tn * s.jumpAt1
-	            var t2 = tn * s.jumpAt2
+	            var t1 = tn * (s.jumpAt1 || defaults.jumpAt1)
+	            var t2 = tn * (s.jumpAt2 || defaults.jumpAt2)
 	            var j1 = s.jumpBy1 || 0
 	            var j2 = s.jumpBy2 || 0
 	            if (t2 < t1) {
@@ -325,9 +352,13 @@
 
 	            // init state for scheduling ramps and jumps
 	            var fq = synth.frequency
-	            var currF = 0
+	            fq.value = f0
+	            var currF = f0
 	            var currT = Tone.now()
 	            var end = currT + duration
+
+	            // for some reson Edge and Firefox require this
+	            fq.setRampPoint()
 
 	            // scale times to the specified period
 	            t1 *= period
@@ -349,6 +380,12 @@
 
 	}
 
+
+	/*
+	 *
+	 *      Miscellaneous helpers 
+	 * 
+	*/
 
 	function rampParam(param, value) {
 	    if (param.value != value) param.rampTo(value, 0.02)
@@ -372,6 +409,13 @@
 	}
 	var _signal = new Tone.TimelineSignal()
 
+
+
+	function makeObjectPoolGetter(arr) {
+	    var i = 0
+	    var n = arr.length
+	    return function () { return arr[i++ % n] }
+	}
 
 
 
