@@ -50,19 +50,15 @@ function FX() {
 
     this.play = function (settings) {
         var s = settings
-        var env = s.envelope
-        var holdTime = s.duration + env.attack + env.decay
-        var duration = holdTime + env.release
+        var holdTime = s.duration + s.attack + s.decay
+        var duration = holdTime + s.release
 
         // input chain
         rampParam(Tone.Master.volume, s.volume)
 
-        // rampParam(tremolo.depth, s.tremolo)
-        // rampParam(tremolo.frequency, s.tremoloFreq)
         tremolo.depth.value = s.tremolo
         tremolo.frequency.value = s.tremoloFreq
         tremolo.wet.value = (s.tremolo) ? 1 : 0
-
 
         var bc = s.bitcrush || 0
         crusher.bits = bc || 8
@@ -73,10 +69,10 @@ function FX() {
 
             var noise = getNoise()
             noise.noise.type = s.source.split(' ')[0]
-            noise.envelope.attack = env.attack
-            noise.envelope.decay = env.decay
-            noise.envelope.sustain = env.sustain
-            noise.envelope.release = env.release
+            noise.envelope.attack = s.attack
+            noise.envelope.decay = s.decay
+            noise.envelope.sustain = s.sustain
+            noise.envelope.release = s.release
 
             noise.triggerAttackRelease(holdTime)
 
@@ -86,17 +82,17 @@ function FX() {
             var type = s.source
             if (s.harmonics > 0) type += s.harmonics
             synth.oscillator.type = type
-            synth.envelope.attack = env.attack
-            synth.envelope.decay = env.decay
-            synth.envelope.sustain = env.sustain
-            synth.envelope.release = env.release
+            synth.envelope.attack = s.attack
+            synth.envelope.decay = s.decay
+            synth.envelope.sustain = s.sustain
+            synth.envelope.release = s.release
 
             synth.triggerAttackRelease(0, holdTime)
 
             // set up necessary frequency values with sweeps and jumps
             // times are scaled to t0=0, tn=1, for now
             var f0 = s.frequency
-            var fn = s.sweepBy ? f0 * (1 + s.sweepBy) : f0
+            var fn = s.sweep ? f0 * (1 + s.sweep) : f0
             var t0 = 0
             var tn = 1
 
@@ -139,12 +135,12 @@ function FX() {
 
             // loop through scheduling one period at a time
             while (currT < end) {
-                if (currF != f0)  currF = doJump(fq, f0, currT + t0)
-                if (currF != f1)  currF = doRamp(fq, f1, currT + t1)
+                if (currF != f0) currF = doJump(fq, f0, currT + t0)
+                if (currF != f1) currF = doRamp(fq, f1, currT + t1)
                 if (currF != f1b) currF = doJump(fq, f1b, currT + t1)
-                if (currF != f2)  currF = doRamp(fq, f2, currT + t2)
+                if (currF != f2) currF = doRamp(fq, f2, currT + t2)
                 if (currF != f2b) currF = doJump(fq, f2b, currT + t2)
-                if (currF != fn)  currF = doRamp(fq, fn, currT + tn)
+                if (currF != fn) currF = doRamp(fq, fn, currT + tn)
                 currT += period
             }
         }
