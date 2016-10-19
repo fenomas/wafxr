@@ -94,10 +94,11 @@ function FX() {
             synth.triggerAttackRelease(0, holdTime)
 
             // set up necessary frequency values with sweeps and jumps
+            // times are scaled to t0=0, tn=1, for now
             var f0 = s.frequency
             var fn = s.sweepBy ? f0 * (1 + s.sweepBy) : f0
             var t0 = 0
-            var tn = duration
+            var tn = 1
 
             // calculate ramp/jump values
             var t1 = tn * s.jumpAt1
@@ -119,23 +120,37 @@ function FX() {
             var f2b = f2 * (1 + j2)
             fn += f2b - f2
 
-            // schedule the actual ramps and jumps
-            var f = synth.frequency
-            var curr = f0
-            var now = Tone.now()
+            // period for repeating the whole sweep/jump process
+            var repeat = s.repeat || 0
+            if (repeat > 100) repeat = 100
+            var period = repeat ? 1 / repeat : duration
+            if (period > duration) period = duration
 
-            f.value = curr
-            if (curr != f1) curr = doRamp(f, f1, now + t1)
-            if (curr != f1b) curr = doJump(f, f1b, now + t1)
-            if (curr != f2) curr = doRamp(f, f2, now + t2)
-            if (curr != f2b) curr = doJump(f, f2b, now + t2)
-            if (curr != fn) curr = doRamp(f, fn, now + tn)
+            // init state for scheduling ramps and jumps
+            var fq = synth.frequency
+            var currF = 0
+            var currT = Tone.now()
+            var end = currT + duration
 
+            // scale times to the specified period
+            t1 *= period
+            t2 *= period
+            tn = period
+
+            // loop through scheduling one period at a time
+            while (currT < end) {
+                if (currF != f0)  currF = doJump(fq, f0, currT + t0)
+                if (currF != f1)  currF = doRamp(fq, f1, currT + t1)
+                if (currF != f1b) currF = doJump(fq, f1b, currT + t1)
+                if (currF != f2)  currF = doRamp(fq, f2, currT + t2)
+                if (currF != f2b) currF = doJump(fq, f2b, currT + t2)
+                if (currF != fn)  currF = doRamp(fq, fn, currT + tn)
+                currT += period
+            }
         }
     }
 
 }
-
 
 
 function rampParam(param, value) {

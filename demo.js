@@ -10,6 +10,7 @@ var settings = {
     duration: 0.4,
     volume: 0,
     frequency: 500,
+    repeat: 0,
     sweepBy: 1,
     jumpBy1: 0,
     jumpAt1: 0.33,
@@ -88,6 +89,7 @@ f.add(settings.envelope, 'release', 0, 1).step(0.001).onChange(go)
 f = gui1.addFolder('Pitch')
 f.add(settings, 'frequency', 100, 2000).step(1).onChange(go)
 f.add(settings, 'sweepBy', -2, 2).step(0.1).onChange(go)
+f.add(settings, 'repeat', 0, 20).step(0.1).onChange(go)
 f.add(settings, 'jumpBy1', -1, 1).step(0.01).onChange(go)
 f.add(settings, 'jumpAt1', 0, 1).step(0.01).onChange(go)
 f.add(settings, 'jumpBy2', -1, 1).step(0.01).onChange(go)
