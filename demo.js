@@ -24,6 +24,7 @@ var settings = {
     volume: -10,
     source: "triangle",
     harmonics: 0,
+    pulseWidth: 0.5,
 
     bitcrush: 0,
     tremolo: 0,
@@ -39,7 +40,7 @@ var settings = {
 
 
 
-var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'white noise', 'brown noise', 'pink noise']
+var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 var others = {
     sourceNum: sourceNames.indexOf(settings.source),
 }
@@ -85,6 +86,7 @@ f.add(settings, 'volume', -50, 50).step(1).name('volume (db)').onChange(go)
 f.add(others, 'sourceNum', 0, sourceNames.length - 1).step(1).onChange(function () { setWave(); go() })
 f.add(settings, 'source').name('source name').listen()
 f.add(settings, 'harmonics', 0, 6).step(1).onChange(function () { setWave(); go() })
+f.add(settings, 'pulseWidth', 0, 1).step(0.01).onChange(go)
 
 f = gui1.addFolder('Envelope')
 f.add(settings, 'duration', 0.01, 1).step(0.01).onChange(go)

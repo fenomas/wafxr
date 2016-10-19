@@ -18,8 +18,8 @@ function FX() {
     var vibrato = new Tone.Vibrato(5, 1)
     vibrato.wet.value = 0
 
-    var lowpass = new Tone.Filter (22000, 'lowpass')
-    var highpass = new Tone.Filter (0, 'highpass')
+    var lowpass = new Tone.Filter(22000, 'lowpass')
+    var highpass = new Tone.Filter(0, 'highpass')
 
     input.chain(vibrato, tremolo, lowpass, highpass, crusher, Tone.Master)
 
@@ -103,8 +103,10 @@ function FX() {
 
             var synth = getSynth()
             var type = s.source
-            if (s.harmonics > 0) type += s.harmonics
+            var isPulse = (type == 'pulse')
+            if (!isPulse && s.harmonics > 0) type += s.harmonics
             synth.oscillator.type = type
+            if (isPulse) synth.oscillator.width.value = s.pulseWidth || 0.5
             synth.envelope.attack = s.attack
             synth.envelope.decay = s.decay
             synth.envelope.sustain = s.sustain
