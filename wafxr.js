@@ -38,22 +38,13 @@ function FX() {
         return function () { return noises[i++ % n] }
     })()
 
-    window.tone = Tone
+    window.Tone = Tone
     window.synth = synths[0]
     window.noise = noises[0]
 
 
-
-    // set up timelineSignals to drive synth frequencies
-    var freqs = []
-    while (freqs.length < synths.length) {
-        var synth = synths[freqs.length]
-        freqs.push(new Tone.TimelineSignal().connect(synth.frequency))
-    }
-    var getFreq = (function () {
-        var i = 0, n = freqs.length
-        return function () { return freqs[i++ % n] }
-    })()
+    // a timelineSignal used for calculating ramped values
+    var signal = new Tone.TimelineSignal()
 
 
 
@@ -102,41 +93,66 @@ function FX() {
 
             synth.triggerAttackRelease(0, holdTime)
 
-            // set up necessary events related to sweeps and jumps
-            var f = getFreq()
+            // set up necessary frequency values with sweeps and jumps
             var f0 = s.frequency
-            var sweep = f0 * s.sweepBy
-            var fn = s.frequency + sweep
-            var t0 = Tone.now()
-            var tn = t0 + duration
+            var fn = s.sweepBy ? f0 * (1 + s.sweepBy) : f0
+            var t0 = 0
+            var tn = duration
 
-            // base value and overall sweep
-            f.setValueAtTime(s.frequency, t0)
-            if (sweep) f.exponentialRampToValueBetween(fn, t0, tn)
-            console.log(sweep)            
-
-            // intermediate jumps to other values
-            checkJumpOrders(s)
-            var fprev = f0
-            if (s.jumpBy1) {
-                var t1 = t0 + duration * s.jumpAt1
-                var f1 = f.getValueAtTime(t1)
-                sweep -= (f1 - fprev)
-                f.setRampPoint(t1)
-                var fjump1 = f1 * (1 + s.jumpBy1)
-                f.setValueAtTime(fjump1, t1)
-                if (sweep) f.exponentialRampToValueBetween(fjump1 + sweep, t1, tn)
-                fprev = fjump1
+            // calculate ramp/jump values
+            var t1 = tn * s.jumpAt1
+            var t2 = tn * s.jumpAt2
+            var j1 = s.jumpBy1 || 0
+            var j2 = s.jumpBy2 || 0
+            if (t2 < t1) {
+                var _temp = t1; t1 = t2; t2 = _temp
+                _temp = j1; j1 = j2; j2 = _temp
+            }
+            
+            var f1, f1b
+            if (j1) {
+                f1 = fqInterpolate(t0, tn, f0, fn, t1)
+                f1b = f1 * (1 + j1)
+                fn += f1b - f1
+            } else {
+                f1 = f1b = f0
+                t1 = t0
             }
 
-            if (s.jumpBy2) {
-                var t2 = t0 + duration * s.jumpAt2
-                var f2 = f.getValueAtTime(t2)
-                sweep -= (f2 - fprev)
-                f.setRampPoint(t2)
-                var fjump2 = f2 * (1 + s.jumpBy2)
-                f.setValueAtTime(fjump2, t2)
-                if (sweep) f.exponentialRampToValueBetween(fjump2 + sweep, t2, tn)
+            var f2, f2b
+            if (j2) {
+                f2 = fqInterpolate(t1, tn, f1b, fn, t2)
+                f2b = f2 * (1 + j2)
+                fn += f2b - f2
+            } else {
+                f2 = f2b = f1b
+                t2 = t1
+            }
+
+            // schedule the actual ramps and jumps
+            var f = synth.frequency
+            f.value = f0
+            var prev = f0
+            var now = Tone.now()
+
+            if (f1 != prev) {
+                f.exponentialRampToValueAtTime(f1, now + t1)
+                prev = f1
+            }
+            if (f1b != prev) {
+                f.setValueAtTime(f1b, now + t1)
+                prev = f1b
+            }
+            if (f2 != prev) {
+                f.exponentialRampToValueAtTime(f2, now + t2)
+                prev = f2
+            }
+            if (f2b != prev) {
+                f.setValueAtTime(f2b, now + t2)
+                prev = f2b
+            }
+            if (fn != prev) {
+                f.exponentialRampToValueAtTime(fn, now + tn)
             }
 
         }
@@ -151,17 +167,11 @@ function rampParam(param, value) {
 }
 
 
-function checkJumpOrders(settings) {
-    if (settings.jumpBy1 && settings.jumpBy2) {
-        if (settings.jumpAt2 < settings.jumpAt1) {
-            var t1 = settings.jumpBy1
-            var t2 = settings.jumpAt1
-            settings.jumpBy1 = settings.jumpBy2
-            settings.jumpAt1 = settings.jumpAt2
-            settings.jumpBy2 = t1 
-            settings.jumpAt2 = t2 
-        }
-    }
+function fqInterpolate(t0, tn, f0, fn, t) {
+    _signal.setValueAtTime(f0, 0)
+    _signal.exponentialRampToValueBetween(fn, 0, tn - t0)
+    return _signal.getValueAtTime(t - t0)
 }
+var _signal = new Tone.TimelineSignal()
 
 

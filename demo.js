@@ -12,7 +12,7 @@ var settings = {
     frequency: 500,
     sweepBy: 1,
     jumpBy1: 0,
-    jumpAt1: 0.5,
+    jumpAt1: 0.33,
     jumpBy2: 0,
     jumpAt2: 0.66,
 
