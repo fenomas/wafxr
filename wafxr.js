@@ -108,52 +108,28 @@ function FX() {
                 var _temp = t1; t1 = t2; t2 = _temp
                 _temp = j1; j1 = j2; j2 = _temp
             }
-            
-            var f1, f1b
-            if (j1) {
-                f1 = fqInterpolate(t0, tn, f0, fn, t1)
-                f1b = f1 * (1 + j1)
-                fn += f1b - f1
-            } else {
-                f1 = f1b = f0
-                t1 = t0
-            }
 
-            var f2, f2b
-            if (j2) {
-                f2 = fqInterpolate(t1, tn, f1b, fn, t2)
-                f2b = f2 * (1 + j2)
-                fn += f2b - f2
-            } else {
-                f2 = f2b = f1b
-                t2 = t1
-            }
+            if (j1 === 0) t1 = 0
+            var f1 = fqInterpolate(t0, tn, f0, fn, t1)
+            var f1b = f1 * (1 + j1)
+            fn += f1b - f1
+
+            if (j2 === 0) t2 = t1
+            var f2 = fqInterpolate(t1, tn, f1b, fn, t2)
+            var f2b = f2 * (1 + j2)
+            fn += f2b - f2
 
             // schedule the actual ramps and jumps
             var f = synth.frequency
-            f.value = f0
-            var prev = f0
+            var curr = f0
             var now = Tone.now()
 
-            if (f1 != prev) {
-                f.exponentialRampToValueAtTime(f1, now + t1)
-                prev = f1
-            }
-            if (f1b != prev) {
-                f.setValueAtTime(f1b, now + t1)
-                prev = f1b
-            }
-            if (f2 != prev) {
-                f.exponentialRampToValueAtTime(f2, now + t2)
-                prev = f2
-            }
-            if (f2b != prev) {
-                f.setValueAtTime(f2b, now + t2)
-                prev = f2b
-            }
-            if (fn != prev) {
-                f.exponentialRampToValueAtTime(fn, now + tn)
-            }
+            f.value = curr
+            if (curr != f1) curr = doRamp(f, f1, now + t1)
+            if (curr != f1b) curr = doJump(f, f1b, now + t1)
+            if (curr != f2) curr = doRamp(f, f2, now + t2)
+            if (curr != f2b) curr = doJump(f, f2b, now + t2)
+            if (curr != fn) curr = doRamp(f, fn, now + tn)
 
         }
     }
@@ -166,8 +142,18 @@ function rampParam(param, value) {
     if (param.value != value) param.rampTo(value, 0.02)
 }
 
+function doJump(signal, value, time) {
+    signal.setValueAtTime(value, time)
+    return value
+}
+
+function doRamp(signal, value, time) {
+    signal.exponentialRampToValueAtTime(value, time)
+    return value
+}
 
 function fqInterpolate(t0, tn, f0, fn, t) {
+    if (t === t0) return f0
     _signal.setValueAtTime(f0, 0)
     _signal.exponentialRampToValueBetween(fn, 0, tn - t0)
     return _signal.getValueAtTime(t - t0)
