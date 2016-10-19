@@ -7,35 +7,37 @@ var fx = require('.')
 
 // settings object
 var settings = {
-    duration: 0.2,
+    duration: 0.4,
     volume: 0,
     frequency: 500,
-    freqSweepMult: 1,
-    source: "sine",
+    sweepBy: 1,
+    jumpBy1: 0,
+    jumpAt1: 0.5,
+    jumpBy2: 0,
+    jumpAt2: 0.66,
+
+    source: "triangle",
     harmonics: 0,
     bitcrush: 0,
     envelope: {
         sustain: 0.9,
         attack: 0.01,
         decay: 0.01,
-        release: 0.01,
+        release: 0.4,
     },
     tremolo: 0,
     tremoloFreq: 10,
 }
 
 
-var others = {
-    sourceNum: 0,
-    sourceName: 'sine',
-}
 
 var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'white noise', 'brown noise', 'pink noise']
+var others = {
+    sourceNum: sourceNames.indexOf(settings.source),
+}
 
 function setWave() {
-    var name = sourceNames[others.sourceNum]
-    others.sourceName = name
-    settings.source = name
+    settings.source = sourceNames[others.sourceNum]
 }
 
 
@@ -73,7 +75,7 @@ var f
 f = gui2.addFolder('Wave')
 f.add(settings, 'volume', -50, 50).step(1).onChange(go)
 f.add(others, 'sourceNum', 0, sourceNames.length - 1).step(1).onChange(function () { setWave(); go() })
-f.add(others, 'sourceName').listen()
+f.add(settings, 'source').listen()
 f.add(settings, 'harmonics', 0, 6).step(1).onChange(function () { setWave(); go() })
 
 f = gui1.addFolder('Shape')
@@ -85,7 +87,11 @@ f.add(settings.envelope, 'release', 0, 1).step(0.001).onChange(go)
 
 f = gui1.addFolder('Pitch')
 f.add(settings, 'frequency', 100, 2000).step(1).onChange(go)
-f.add(settings, 'freqSweepMult', 0.2, 3.0).step(0.1).onChange(go)
+f.add(settings, 'sweepBy', -2, 2).step(0.1).onChange(go)
+f.add(settings, 'jumpBy1', -1, 1).step(0.01).onChange(go)
+f.add(settings, 'jumpAt1', 0, 1).step(0.01).onChange(go)
+f.add(settings, 'jumpBy2', -1, 1).step(0.01).onChange(go)
+f.add(settings, 'jumpAt2', 0, 1).step(0.01).onChange(go)
 
 f = gui2.addFolder('Effects')
 f.add(settings, 'tremolo', 0, 1).step(0.01).onChange(go)
