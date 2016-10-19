@@ -53,44 +53,58 @@
 
 	// settings object
 	var settings = {
-	    duration: 0.2   ,
-	    volume: 0,
+	    duration: 0.4,
+	    sustain: 0.9,
+	    attack: 0.01,
+	    decay: 0.01,
+	    release: 0.4,
+
 	    frequency: 500,
-	    freqSweepMult: 1,
-	    source: "sine",
+	    sweep: 1,
+	    repeat: 0,
+	    jumpAt1: 0.33,
+	    jumpBy1: 0,
+	    jumpAt2: 0.66,
+	    jumpBy2: 0,
+
+	    volume: -10,
+	    source: "triangle",
 	    harmonics: 0,
+
 	    bitcrush: 0,
-	    envelope: {
-	        sustain: 0.9,
-	        attack: 0.01,
-	        decay: 0.01,
-	        release: 0.01,
-	    },
 	    tremolo: 0,
 	    tremoloFreq: 10,
+	    vibrato: 0,
+	    vibratoFreq: 10,
+
+	    lowpass: 22000,
+	    lowpassSweep: 0,
+	    highpass: 0,
+	    highpassSweep: 0,
 	}
 
 
-	var others = {
-	    sourceNum: 0,
-	    sourceName: 'sine',
-	}
 
 	var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'white noise', 'brown noise', 'pink noise']
+	var others = {
+	    sourceNum: sourceNames.indexOf(settings.source),
+	}
 
 	function setWave() {
-	    var name = sourceNames[others.sourceNum]
-	    others.sourceName = name
-	    settings.source = name
+	    settings.source = sourceNames[others.sourceNum]
 	}
 
 
 
 
 	function go() {
+	    var t = performance.now()
+	    if (t - lt < 300) return
 	    fx.play(settings)
+	    lt = t
 	}
-	window.addEventListener('keydown', function(ev) {
+	var lt = 0
+	window.addEventListener('keydown', function (ev) {
 	    if (ev.keyCode === 32) go()
 	})
 
@@ -98,45 +112,61 @@
 	/*
 	 * 		Building the dat-gui
 	*/
-
-	var gui = new dat.GUI({
+	var opts = {
 	    autoPlace: false,
 	    hideable: false,
 	    width: 450,
-	})
-	document.querySelector('#ui').appendChild(gui.domElement)
+	}
+	var gui1 = new dat.GUI(opts)
+	var gui2 = new dat.GUI(opts)
+	document.querySelector('#menu1').appendChild(gui1.domElement)
+	document.querySelector('#menu2').appendChild(gui2.domElement)
 
 
-	// // main
+	// main
+	var f
 
-	var f = gui.addFolder('Wave')
+	f = gui2.addFolder('Wave')
+	f.add(settings, 'volume', -50, 50).step(1).name('volume (db)').onChange(go)
 	f.add(others, 'sourceNum', 0, sourceNames.length - 1).step(1).onChange(function () { setWave(); go() })
-	f.add(others, 'sourceName').listen()
+	f.add(settings, 'source').name('source name').listen()
 	f.add(settings, 'harmonics', 0, 6).step(1).onChange(function () { setWave(); go() })
 
-	f = gui.addFolder('Shape')
-	f.add(settings, 'volume', -50, 50).step(1).onChange(go)
+	f = gui1.addFolder('Envelope')
 	f.add(settings, 'duration', 0.01, 1).step(0.01).onChange(go)
-	f.add(settings.envelope, 'sustain', 0, 1).step(0.1).onChange(go)
-	f.add(settings.envelope, 'attack', 0, 1).step(0.001).onChange(go)
-	f.add(settings.envelope, 'decay', 0, 1).step(0.001).onChange(go)
-	f.add(settings.envelope, 'release', 0, 1).step(0.001).onChange(go)
+	f.add(settings, 'sustain', 0, 1).step(0.1).name('sustain level').onChange(go)
+	f.add(settings, 'attack', 0, 1).step(0.001).onChange(go)
+	f.add(settings, 'decay', 0, 1).step(0.001).onChange(go)
+	f.add(settings, 'release', 0, 1).step(0.001).onChange(go)
 
-	f = gui.addFolder('Pitch')
+	f = gui1.addFolder('Pitch')
 	f.add(settings, 'frequency', 100, 2000).step(1).onChange(go)
-	f.add(settings, 'freqSweepMult', 0.2, 3.0).step(0.1).onChange(go)
+	f.add(settings, 'sweep', -2, 2).step(0.1).name('frequency sweep').onChange(go)
+	f.add(settings, 'repeat', 0, 20).step(0.1).name('repeat (Hz)').onChange(go)
+	f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('jump 1 time').onChange(go)
+	f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
+	f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('jump 1 time').onChange(go)
+	f.add(settings, 'jumpBy2', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
 
-	f = gui.addFolder('Effects')
-	f.add(settings, 'tremolo', 0, 1).step(0.01).onChange(go)
-	f.add(settings, 'tremoloFreq', 0, 20).step(0.5).onChange(go)
-	f.add(settings, 'bitcrush', 0, 8).step(1).onChange(go)
+	f = gui2.addFolder('Effects')
+	f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').onChange(go)
+	f.add(settings, 'tremolo', 0, 1).step(0.01).name('tremolo depth').onChange(go)
+	f.add(settings, 'tremoloFreq', 0, 20).step(0.5).name('tremolo frequency').onChange(go)
+	f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').onChange(go)
+	f.add(settings, 'vibratoFreq', 0, 20).step(0.5).name('vibrato frequency').onChange(go)
+
+	var maxFq = 22000
+	f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').onChange(go)
+	f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('lowpass sweep').onChange(go)
+	f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').onChange(go)
+	f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('highpass sweep').onChange(go)
 
 
+	window.gui1 = gui1
+	window.gui2 = gui2
+	for (var s in gui1.__folders) gui1.__folders[s].open()
+	for (var s in gui2.__folders) gui2.__folders[s].open()
 
-	window.gui = gui
-	for (var s in gui.__folders) {
-	    gui.__folders[s].open()
-	}
 	console.clear()
 
 
@@ -155,85 +185,164 @@
 
 	function FX() {
 
-	    // var settings = {
-	    //     duration: 0.5,
-	    //     frequency: 440,
-	    //     sweepMult: 0.1,
-	    //     source: "sine",
-	    //     harmonics: 0,
-	    //     envelope: {
-	    //         attack: 0.005,
-	    //         decay: 0.1,
-	    //         sustain: 0.9,
-	    //         release: 1,
-	    //     },
-	    // }
-
 	    // input chain
 	    var input = new Tone.Gain(1)
 	    var crusher = new Tone.BitCrusher(8)
 	    crusher.wet.value = 0
 
-	    var tremolo = new Tone.Tremolo(5, 1).toMaster().start()
+	    var tremolo = new Tone.Tremolo(5, 1)
 	    tremolo.wet.value = 0
 
-	    input.chain(tremolo, crusher, Tone.Master)
+	    var vibrato = new Tone.Vibrato(5, 1)
+	    vibrato.wet.value = 0
+
+	    var lowpass = new Tone.Filter (22000, 'lowpass')
+	    var highpass = new Tone.Filter (0, 'highpass')
+
+	    input.chain(vibrato, tremolo, lowpass, highpass, crusher, Tone.Master)
 
 
 	    // instruments
-	    var defaults = {
-	        envelope: {
-	            releaseCurve: 'linear',
-	        }
-	    }
-	    var synth = new Tone.Synth(defaults).connect(tremolo)
-	    var noise = new Tone.NoiseSynth(defaults).connect(tremolo)
+	    var synths = []
+	    var noises = []
+	    while (synths.length < 3) synths.push(new Tone.Synth())
+	    while (noises.length < 2) noises.push(new Tone.NoiseSynth())
 
-	    window.tone = Tone
-	    window.t = tremolo
+	    synths.concat(noises).forEach(v => {
+	        v.envelope.releaseCurve = 'linear'
+	        v.connect(input)
+	    })
+
+	    var getSynth = (function () {
+	        var i = 0, n = synths.length
+	        return function () { return synths[i++ % n] }
+	    })()
+	    var getNoise = (function () {
+	        var i = 0, n = noises.length
+	        return function () { return noises[i++ % n] }
+	    })()
+
+	    window.Tone = Tone
+	    window.synth = synths[0]
+	    window.noise = noises[0]
+
+
+	    // a timelineSignal used for calculating ramped values
+	    var signal = new Tone.TimelineSignal()
 
 
 
 	    this.play = function (settings) {
-	        var env = settings.envelope
-	        var time = getADSTime(settings.duration, env)
+	        var s = settings
+	        var holdTime = s.duration + s.attack + s.decay
+	        var duration = holdTime + s.release
 
 	        // input chain
-	        rampParam(Tone.Master.volume, settings.volume)
+	        rampParam(Tone.Master.volume, s.volume)
 
-	        // rampParam(tremolo.depth, settings.tremolo)
-	        // rampParam(tremolo.frequency, settings.tremoloFreq)
-	        tremolo.depth.value = settings.tremolo
-	        tremolo.frequency.value = settings.tremoloFreq
-	        tremolo.wet.value = (settings.tremolo) ? 1 : 0
+	        tremolo.wet.value = (s.tremolo) ? 1 : 0
+	        if (s.tremolo) {
+	            tremolo.depth.value = s.tremolo
+	            tremolo.frequency.value = s.tremoloFreq || 0
+	        }
 
+	        vibrato.wet.value = (s.vibrato) ? 1 : 0
+	        if (s.vibrato) {
+	            vibrato.depth.value = s.vibrato
+	            vibrato.frequency.value = s.vibratoFreq || 0
+	        }
 
-	        var bc = settings.bitcrush || 0
-	        crusher.bits = bc || 8
-	        crusher.wet.value = bc ? 1 : 0
+	        lowpass.frequency.value = s.lowpass || 22000
+	        if (s.lowpass && s.lowpassSweep) {
+	            lowpass.frequency.rampTo(s.lowpass + s.lowpassSweep, duration)
+	        }
+
+	        highpass.frequency.value = s.highpass || 0
+	        if (s.highpass && s.highpassSweep) {
+	            highpass.frequency.rampTo(s.highpass + s.highpassSweep, duration)
+	        }
+
+	        crusher.wet.value = s.bitcrush ? 1 : 0
+	        crusher.bits = s.bitcrush || 8
 
 	        // instruments
-	        if (/noise/.test(settings.source)) {
-	            noise.noise.type = settings.source.split(' ')[0]
-	            noise.envelope.attack = env.attack
-	            noise.envelope.decay = env.decay
-	            noise.envelope.sustain = env.sustain
-	            noise.envelope.release = env.release
+	        if (/noise/.test(s.source)) {
 
-	            noise.triggerAttackRelease(time)
+	            var noise = getNoise()
+	            noise.noise.type = s.source.split(' ')[0]
+	            noise.envelope.attack = s.attack
+	            noise.envelope.decay = s.decay
+	            noise.envelope.sustain = s.sustain
+	            noise.envelope.release = s.release
+
+	            noise.triggerAttackRelease(holdTime)
+
 	        } else {
-	            var type = settings.source
-	            if (settings.harmonics > 0) type += settings.harmonics
-	            synth.oscillator.type = type
-	            synth.envelope.attack = env.attack
-	            synth.envelope.decay = env.decay
-	            synth.envelope.sustain = env.sustain
-	            synth.envelope.release = env.release
 
-	            synth.triggerAttackRelease(settings.frequency, time)
-	            if (settings.freqSweepMult !== 1) {
-	                var dur = time + settings.envelope.release
-	                synth.frequency.rampTo(settings.frequency * settings.freqSweepMult, dur)
+	            var synth = getSynth()
+	            var type = s.source
+	            if (s.harmonics > 0) type += s.harmonics
+	            synth.oscillator.type = type
+	            synth.envelope.attack = s.attack
+	            synth.envelope.decay = s.decay
+	            synth.envelope.sustain = s.sustain
+	            synth.envelope.release = s.release
+
+	            synth.triggerAttackRelease(0, holdTime)
+
+	            // set up necessary frequency values with sweeps and jumps
+	            // times are scaled to t0=0, tn=1, for now
+	            var f0 = s.frequency
+	            var fn = s.sweep ? f0 * (1 + s.sweep) : f0
+	            var t0 = 0
+	            var tn = 1
+
+	            // calculate ramp/jump values
+	            var t1 = tn * s.jumpAt1
+	            var t2 = tn * s.jumpAt2
+	            var j1 = s.jumpBy1 || 0
+	            var j2 = s.jumpBy2 || 0
+	            if (t2 < t1) {
+	                var _temp = t1; t1 = t2; t2 = _temp
+	                _temp = j1; j1 = j2; j2 = _temp
+	            }
+
+	            if (j1 === 0) t1 = 0
+	            var f1 = fqInterpolate(t0, tn, f0, fn, t1)
+	            var f1b = f1 * (1 + j1)
+	            fn += f1b - f1
+
+	            if (j2 === 0) t2 = t1
+	            var f2 = fqInterpolate(t1, tn, f1b, fn, t2)
+	            var f2b = f2 * (1 + j2)
+	            fn += f2b - f2
+
+	            // period for repeating the whole sweep/jump process
+	            var repeat = s.repeat || 0
+	            if (repeat > 100) repeat = 100
+	            var period = repeat ? 1 / repeat : duration
+	            if (period > duration) period = duration
+
+	            // init state for scheduling ramps and jumps
+	            var fq = synth.frequency
+	            var currF = 0
+	            var currT = Tone.now()
+	            var end = currT + duration
+
+	            // scale times to the specified period
+	            t1 *= period
+	            t2 *= period
+	            tn = period
+
+	            // loop through scheduling one period at a time
+	            while (currT < end) {
+	                if (currF != f0) currF = doJump(fq, f0, currT + t0)
+	                if (currF != f1) currF = doRamp(fq, f1, currT + t1)
+	                if (currF != f1b) currF = doJump(fq, f1b, currT + t1)
+	                if (currF != f2) currF = doRamp(fq, f2, currT + t2)
+	                if (currF != f2b) currF = doJump(fq, f2b, currT + t2)
+	                if (currF != fn) currF = doRamp(fq, fn, currT + tn)
+	                currT += period
 	            }
 	        }
 	    }
@@ -241,13 +350,27 @@
 	}
 
 
-	function getADSTime(duration, envelope) {
-	    return duration + envelope.attack + envelope.decay
-	}
-
 	function rampParam(param, value) {
 	    if (param.value != value) param.rampTo(value, 0.02)
 	}
+
+	function doJump(signal, value, time) {
+	    signal.setValueAtTime(value, time)
+	    return value
+	}
+
+	function doRamp(signal, value, time) {
+	    signal.exponentialRampToValueAtTime(value, time)
+	    return value
+	}
+
+	function fqInterpolate(t0, tn, f0, fn, t) {
+	    if (t === t0) return f0
+	    _signal.setValueAtTime(f0, 0)
+	    _signal.exponentialRampToValueBetween(fn, 0, tn - t0)
+	    return _signal.getValueAtTime(t - t0)
+	}
+	var _signal = new Tone.TimelineSignal()
 
 
 
