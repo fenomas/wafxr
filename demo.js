@@ -25,9 +25,16 @@ var settings = {
     source: "triangle",
     harmonics: 0,
 
+    bitcrush: 0,
     tremolo: 0,
     tremoloFreq: 10,
-    bitcrush: 0,
+    vibrato: 0,
+    vibratoFreq: 10,
+
+    lowpass: 22000,
+    lowpassSweep: 0,
+    highpass: 0,
+    highpassSweep: 0,
 }
 
 
@@ -96,10 +103,17 @@ f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('jump 1 time').onChange(go)
 f.add(settings, 'jumpBy2', -1, 1).step(0.01).name('jump 2 amount').onChange(go)
 
 f = gui2.addFolder('Effects')
+f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').onChange(go)
 f.add(settings, 'tremolo', 0, 1).step(0.01).name('tremolo depth').onChange(go)
 f.add(settings, 'tremoloFreq', 0, 20).step(0.5).name('tremolo frequency').onChange(go)
-f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').onChange(go)
+f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').onChange(go)
+f.add(settings, 'vibratoFreq', 0, 20).step(0.5).name('vibrato frequency').onChange(go)
 
+var maxFq = 22000
+f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').onChange(go)
+f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('lowpass sweep').onChange(go)
+f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').onChange(go)
+f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('highpass sweep').onChange(go)
 
 
 window.gui1 = gui1

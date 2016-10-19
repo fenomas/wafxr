@@ -12,10 +12,16 @@ function FX() {
     var crusher = new Tone.BitCrusher(8)
     crusher.wet.value = 0
 
-    var tremolo = new Tone.Tremolo(5, 1).toMaster().start()
+    var tremolo = new Tone.Tremolo(5, 1)
     tremolo.wet.value = 0
 
-    input.chain(tremolo, crusher, Tone.Master)
+    var vibrato = new Tone.Vibrato(5, 1)
+    vibrato.wet.value = 0
+
+    var lowpass = new Tone.Filter (22000, 'lowpass')
+    var highpass = new Tone.Filter (0, 'highpass')
+
+    input.chain(vibrato, tremolo, lowpass, highpass, crusher, Tone.Master)
 
 
     // instruments
@@ -56,13 +62,30 @@ function FX() {
         // input chain
         rampParam(Tone.Master.volume, s.volume)
 
-        tremolo.depth.value = s.tremolo
-        tremolo.frequency.value = s.tremoloFreq
         tremolo.wet.value = (s.tremolo) ? 1 : 0
+        if (s.tremolo) {
+            tremolo.depth.value = s.tremolo
+            tremolo.frequency.value = s.tremoloFreq || 0
+        }
 
-        var bc = s.bitcrush || 0
-        crusher.bits = bc || 8
-        crusher.wet.value = bc ? 1 : 0
+        vibrato.wet.value = (s.vibrato) ? 1 : 0
+        if (s.vibrato) {
+            vibrato.depth.value = s.vibrato
+            vibrato.frequency.value = s.vibratoFreq || 0
+        }
+
+        lowpass.frequency.value = s.lowpass || 22000
+        if (s.lowpass && s.lowpassSweep) {
+            lowpass.frequency.rampTo(s.lowpass + s.lowpassSweep, duration)
+        }
+
+        highpass.frequency.value = s.highpass || 0
+        if (s.highpass && s.highpassSweep) {
+            highpass.frequency.rampTo(s.highpass + s.highpassSweep, duration)
+        }
+
+        crusher.wet.value = s.bitcrush ? 1 : 0
+        crusher.bits = s.bitcrush || 8
 
         // instruments
         if (/noise/.test(s.source)) {
