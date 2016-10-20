@@ -3,21 +3,49 @@
 
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=450, initial-scale=1">
 	<title>wafxr</title>
 	<style type="text/css">
+		body {
+			font: 300 18px/24px Meiryo, Helvetica, sans-serif;
+			padding: 25px;
+			margin: 0;
+		}
+		
+		body > div {
+			margin: 15px 0;
+		}
+		
+		#title {
+			margin: 15px 60px;
+			font: 800 50px monospace;
+		}
+		
 		.menu {
-			margin-left: 1rem;
-			margin-top: 1rem;
+			margin: 0 15px 15px 0;
 			float: left;
 		}
 		
-		button {
-			padding: 1rem;
-			margin: 1rem 4rem;
+		#output {
+			clear: left;
+			padding-top: 10px;
 		}
 		
-		body {
-			font: 300 24px Meiryo, Helvetica, sans-serif;
+		#settings {
+			width: 400px;
+		}
+
+		#nav {
+			padding: 3px 0;
+		}
+		
+		button {
+			font: inherit;
+			padding: 6px 14px;
+			margin: 4px 7px;
+			background-color: whitesmoke;
+			border: 1px solid gray;
+			border-radius: 5px;
 		}
 		
 		div.dg {
@@ -27,12 +55,51 @@
 		.dg .close-button {
 			display: none;
 		}
+		
+		hr {
+			margin: 20px 0;
+		}
+		
+		a {
+			text-decoration: none;
+			color: seagreen;
+		}
 	</style>
 </head>
 
 <body>
-	<div id="menu1" class="menu"></div>
-	<div id="menu2" class="menu"></div>
+	<div id="title">
+		<a href="https://github.com/andyhall/wafxr">wafxr.</a>
+	</div>
+
+	<div id="nav">
+		<button id="reset">Reset</button>
+		<button id="jump">Jump</button>
+		<button id="coin">Coin</button>
+		<button id="expl">Explosion</button>
+		<button id="laser">Laser</button>
+		<button id="ouch">Ouch</button>
+		<button id="power">Powerup</button>
+		<button id="ui">UI</button>
+	</div>
+
+	<div id="menus">
+		<div id="menu1" class="menu"></div>
+		<div id="menu2" class="menu"></div>
+	</div>
+
+	<div id="output">
+		Output:<br>
+		<textarea id="settings" rows="3"></textarea>
+	</div>
+
+	<hr>
+
+	<address id="footer">
+		Made by <a href="https://twitter.com/fenomas">@fenomas</a>. Source is <a href="https://github.com/andyhall/wafxr">here.</a>
+	</address>
+
+
 	<script src="dat.gui.min.js"></script>
 	<script src="bundle.js"></script>
 </body>

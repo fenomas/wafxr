@@ -5,17 +5,19 @@ var Tone = require('tone')
 module.exports = new FX()
 
 
+
 /*
  *  
  *   Defaults - these are all the options wafxr recognizes
  *  
 */
 
+
 var defaults = {
     attack: 0.01,
     decay: 0.01,
-    sustain: 0.4,
-    release: 0.4,
+    sustain: 0.1,
+    release: 0.2,
     sustainLevel: 0.8,
 
     frequency: 440,
@@ -37,11 +39,12 @@ var defaults = {
     vibrato: 0,
     vibratoFreq: 10,
 
-    lowpass: 22000,
+    lowpass: 10000,
     lowpassSweep: 0,
     highpass: 0,
     highpassSweep: 0,
 }
+
 
 
 
@@ -53,45 +56,43 @@ var defaults = {
 
 function FX() {
 
-    // input chain
-    var input = new Tone.Gain(1)
-    var crusher = new Tone.BitCrusher(8)
-    var tremolo = new Tone.Tremolo(5, 1)
-    var vibrato = new Tone.Vibrato(5, 1)
-    var lowpass = new Tone.Filter(22000, 'lowpass')
-    var highpass = new Tone.Filter(0, 'highpass')
+    // input/effect chain - so we can not add effects until they're used
+    var inputNode = new Tone.Gain(1).toMaster()
+    var effects = [
+        null,
+        new VibratoEffect(),
+        new TremoloEffect(),
+        new LowpassEffect(),
+        new HighpassEffect(),
+        new BitCrusherEffect(),
+    ]
+    var nodeChain = [inputNode, null, null, null, null, null, Tone.Master]
+    var effectLastUsed = [0, 0, 0, 0, 0, 0]
 
-    crusher.wet.value = 0
-    tremolo.wet.value = 0
-    vibrato.wet.value = 0
-    tremolo.start()
-    input.chain(vibrato, tremolo, lowpass, highpass, crusher, Tone.Master)
-
-    // instrument pool
+    // create instrument pools and getters - separate for synth/noise
     var synths = []
     var noises = []
     while (synths.length < 3) synths.push(new Tone.Synth())
     while (noises.length < 2) noises.push(new Tone.NoiseSynth())
-
     synths.concat(noises).forEach(function (v) {
         v.envelope.releaseCurve = 'linear'
-        v.connect(input)
+        v.connect(inputNode)
     })
-
     var getSynth = makeObjectPoolGetter(synths)
     var getNoise = makeObjectPoolGetter(noises)
 
+    // todo: remove
     window.Tone = Tone
     window.synth = synths[0]
     window.noise = noises[0]
+    window.chain = nodeChain
 
-
-    // a timelineSignal used for calculating ramped values
-    var signal = new Tone.TimelineSignal()
 
 
     /*
+     * 
      *      APIs 
+     * 
     */
 
     this.getDefaults = function () {
@@ -103,48 +104,45 @@ function FX() {
 
     this.play = function (settings) {
         var s = settings || {}
-        var attack = (s.attack === undefined) ? defaults.attack : s.attack
-        var decay = (s.decay === undefined) ? defaults.decay : s.decay
-        var sustain = (s.sustain === undefined) ? defaults.sustain : s.sustain
-        var release = (s.release === undefined) ? defaults.release : s.release
-        var sustainLevel = (s.sustainLevel === undefined) ? defaults.sustainLevel : s.sustainLevel
+
+        var attack = isNaN(s.attack) ? defaults.attack : s.attack
+        var decay = isNaN(s.decay) ? defaults.decay : s.decay
+        var sustain = isNaN(s.sustain) ? defaults.sustain : s.sustain
+        var release = isNaN(s.release) ? defaults.release : s.release
+        var sustainLevel = isNaN(s.sustainLevel) ? defaults.sustainLevel : s.sustainLevel
+
         var holdTime = sustain + attack + decay
         var duration = holdTime + release
+        var now = Tone.now()
 
-        // input chain
-
-        tremolo.wet.value = (s.tremolo) ? 1 : 0
-        if (s.tremolo) {
-            tremolo.depth.value = s.tremolo
-            tremolo.frequency.value = s.tremoloFreq || 0
-        }
-        window.t = tremolo
-
-        vibrato.wet.value = (s.vibrato) ? 1 : 0
-        if (s.vibrato) {
-            vibrato.depth.value = s.vibrato
-            vibrato.frequency.value = s.vibratoFreq || 0
-        }
-
-        lowpass.frequency.value = s.lowpass || defaults.lowpass
-        if (s.lowpass && s.lowpassSweep) {
-            lowpass.frequency.rampTo(s.lowpass + s.lowpassSweep, duration)
-        }
-
-        highpass.frequency.value = s.highpass || defaults.highpass
-        if (s.highpass && s.highpassSweep) {
-            highpass.frequency.rampTo(s.highpass + s.highpassSweep, duration)
+        // run through effect chain, setting properties and adding/removing nodes
+        for (var i = 1; i < effects.length; i++) {
+            var effect = effects[i]
+            var needed = effect.isNeeded(s)
+            if (!effect.node) {
+                if (!needed) continue
+                effect.node = effect.create()
+                insertEffectNode(nodeChain, effect.node, i)
+            }
+            if (effect.node) {
+                effect.apply(effect.node, s, duration)
+                if (needed) effectLastUsed[i] = now + duration
+            }
+            if (effect.node.wet) effect.node.wet.value = (needed) ? 1 : 0
+            // remove nodes from chain if not needed lately
+            if (effect.node && effectLastUsed[i] < now - 3) {
+                removeEffectNode(nodeChain, i)
+                effect.node = null
+            }
         }
 
-        crusher.wet.value = s.bitcrush ? 1 : 0
-        crusher.bits = s.bitcrush || 8
-
-        // instruments
-        if (/noise/.test(s.source)) {
+        // Trigger instruments and schedule frequency changes
+        var source = s.source || defaults.source
+        if (/noise/.test(source)) {
 
             var noise = getNoise()
             noise.volume.value = s.volume || 0
-            noise.noise.type = s.source.split(' ')[0]
+            noise.noise.type = source.split(' ')[0]
             noise.envelope.attack = attack
             noise.envelope.decay = decay
             noise.envelope.sustain = sustainLevel
@@ -156,10 +154,9 @@ function FX() {
 
             var synth = getSynth()
             synth.volume.value = s.volume || 0
-            var type = s.source || defaults.source
-            var isPulse = (type == 'pulse')
-            if (!isPulse && s.harmonics > 0) type += s.harmonics
-            synth.oscillator.type = type
+            var isPulse = (source == 'pulse')
+            if (!isPulse && s.harmonics > 0) source += s.harmonics
+            synth.oscillator.type = source
             if (isPulse) synth.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
             synth.envelope.attack = attack
             synth.envelope.decay = decay
@@ -234,6 +231,103 @@ function FX() {
 
 
 /*
+ * 
+ *      Abstracted classes for each applicable effect
+ * 
+*/
+
+function VibratoEffect() {
+    this.node = null
+    this.create = function () { return new Tone.Vibrato(5, 1) }
+    this.isNeeded = function (settings) { return (settings.vibrato > 0) }
+    this.apply = function (node, settings, duration) {
+        node.depth.value = settings.vibrato || defaults.vibrato
+        node.frequency.value = settings.vibratoFreq || defaults.vibratoFreq
+    }
+}
+
+function TremoloEffect() {
+    this.node = null
+    this.create = function () { return new Tone.Tremolo(5, 1).start() }
+    this.isNeeded = function (settings) { return (settings.tremolo > 0) }
+    this.apply = function (node, settings, duration) {
+        node.depth.value = settings.tremolo || defaults.tremolo
+        node.frequency.value = settings.tremoloFreq || defaults.tremoloFreq
+    }
+}
+
+function LowpassEffect() {
+    this.node = null
+    this.create = function () { return new Tone.Filter(20000, 'lowpass') }
+    this.isNeeded = function (settings) {
+        return (settings.lowpass < defaults.lowpass || settings.lowpassSweep < 0)
+    }
+    this.apply = function (node, settings, duration) {
+        var freq = settings.lowpass || defaults.lowpass
+        var sweep = settings.lowpassSweep || defaults.lowpassSweep
+        node.frequency.value = freq
+        if (sweep) node.frequency.rampTo(freq + sweep, duration)
+    }
+}
+
+function HighpassEffect() {
+    this.node = null
+    this.create = function () { return new Tone.Filter(0, 'highpass') }
+    this.isNeeded = function (settings) {
+        return (settings.highpass > 0 || settings.highpassSweep > 0)
+    }
+    this.apply = function (node, settings, duration) {
+        var freq = settings.highpass || defaults.highpass
+        var sweep = settings.highpassSweep || defaults.highpassSweep
+        node.frequency.value = freq
+        if (sweep) node.frequency.rampTo(freq + sweep, duration)
+    }
+}
+
+function BitCrusherEffect() {
+    this.node = null
+    this.create = function () { return new Tone.BitCrusher(8) }
+    this.isNeeded = function (settings) { return (settings.bitcrush > 0) }
+    this.apply = function (node, settings, duration) {
+        node.bits = settings.bitcrush || defaults.bitcrush
+    }
+}
+
+
+
+
+
+// helpers for handling connections in the effect chain
+
+function insertEffectNode(chain, node, index) {
+    if (chain[index]) throw 'Tried to add existing effect to chain'
+    var prev = index, next = index
+    while (!chain[prev]) prev--
+    while (!chain[next]) next++
+    chain[prev].disconnect(chain[next])
+    chain[prev].chain(node, chain[next])
+    chain[index] = node
+}
+
+function removeEffectNode(chain, index) {
+    var node = chain[index]
+    if (!node) throw 'Tried to remove nonexistent effect from chain'
+    var prev = index - 1, next = index + 1
+    while (!chain[prev]) prev--
+    while (!chain[next]) next++
+    chain[prev].disconnect(node)
+    node.disconnect(chain[next])
+    chain[prev].connect(chain[next])
+    node.dispose()
+    chain[index] = null
+}
+
+
+
+
+
+
+/*
  *
  *      Miscellaneous helpers 
  * 
@@ -253,19 +347,16 @@ function doRamp(signal, value, time) {
     return value
 }
 
-function fqInterpolate(t0, tn, f0, fn, t) {
-    if (t === t0) return f0
-    _signal.setValueAtTime(f0, 0)
-    _signal.exponentialRampToValueBetween(fn, 0, tn - t0)
-    return _signal.getValueAtTime(t - t0)
+// https://github.com/Tonejs/Tone.js/blob/master/Tone/signal/TimelineSignal.js#L393
+function fqInterpolate(t0, t1, v0, v1, t) {
+    if (v0 < 0.001) v0 = 0.001
+    return v0 * Math.pow(v1 / v0, (t - t0) / (t1 - t0))
 }
-var _signal = new Tone.TimelineSignal()
-
-
 
 function makeObjectPoolGetter(arr) {
     var i = 0
     var n = arr.length
     return function () { return arr[i++ % n] }
 }
+
 
