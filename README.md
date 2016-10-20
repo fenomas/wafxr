@@ -1,5 +1,5 @@
 
-## wafxr
+# wafxr
 
 [wafxr](https://github.com/andyhall/wafxr) is a sound effect generator in the tradition of 
 [as3fxr](http://www.superflashbros.net/as3sfxr/), 
@@ -8,15 +8,15 @@
 and so forth. It differs in that instead of generating sound files, it plays sounds 
 dynamically via WebAudio and [Tone.js](https://github.com/Tonejs/Tone.js/).
 
- * [Live demo](https://andyhall.github.io/wafxr/)
+ * [Demo](https://andyhall.github.io/wafxr/)
 
-### Installation
+## Installation
 
 ```shell
 npm install wafxr
 ```
 
-### Usage
+## Usage
 
 ```js
 var fx = require('wafxr')
@@ -34,9 +34,10 @@ open the [demo](https://andyhall.github.io/wafxr/) page and play around.
 You can also call `fx.getDefaults()` to get an object with properties
 for every setting `wafxr` understands.
 
-### Notes
+## Notes
 
-WIP. Seems to work in sane browsers. Not ready for mobile yet, needs tuning.
+WIP. Seems to work in sane browsers. 
+Should work on mobile, better or worse depending on which effects you use. 
 
 
 
