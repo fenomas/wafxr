@@ -72,20 +72,31 @@ function FX() {
     // create instrument pools and getters - separate for synth/noise
     var synths = []
     var noises = []
-    while (synths.length < 3) synths.push(new Tone.Synth())
-    while (noises.length < 2) noises.push(new Tone.NoiseSynth())
-    synths.concat(noises).forEach(function (v) {
-        v.envelope.releaseCurve = 'linear'
-        v.connect(inputNode)
-    })
+    function setInstrumentCount(count, noisetype) {
+        var arr = noisetype ? noises : synths
+        var ctor = noisetype ? Tone.NoiseSynth : Tone.Synth
+        while (arr.length > count) {
+            var rem = arr.pop()
+            rem.disconnect(inputNode)
+            rem.dispose()
+        }
+        while (arr.length < count) {
+            var inst = new ctor()
+            inst.envelope.releaseCurve = 'linear'
+            inst.connect(inputNode)
+            arr.push(inst)
+        }
+    }
+    setInstrumentCount(3, false)
+    setInstrumentCount(2, true)
+
     var getSynth = makeObjectPoolGetter(synths)
     var getNoise = makeObjectPoolGetter(noises)
 
-    // todo: remove
-    window.Tone = Tone
-    window.synth = synths[0]
-    window.noise = noises[0]
-    window.chain = nodeChain
+    // window.Tone = Tone
+    // window.synth = synths[0]
+    // window.noise = noises[0]
+    // window.chain = nodeChain
 
 
 
@@ -99,6 +110,14 @@ function FX() {
         var obj = {}
         for (var s in defaults) obj[s] = defaults[s]
         return obj
+    }
+
+
+    this.setInstrumentCounts = function (synthCount, noiseCount) {
+        synthCount = isNaN(synthCount) ? 3 : synthCount
+        noiseCount = isNaN(noiseCount) ? 2 : noiseCount
+        setInstrumentCount(synthCount, false)
+        setInstrumentCount(noiseCount, true)
     }
 
 
@@ -355,8 +374,7 @@ function fqInterpolate(t0, t1, v0, v1, t) {
 
 function makeObjectPoolGetter(arr) {
     var i = 0
-    var n = arr.length
-    return function () { return arr[i++ % n] }
+    return function () { return arr[i++ % arr.length] }
 }
 
 

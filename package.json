@@ -7,7 +7,7 @@
     "test": "webpack-dev-server --host 0.0.0.0"
   },
   "author": "Andy Hall",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "tone": "^0.8.0"
   },

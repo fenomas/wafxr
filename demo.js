@@ -41,10 +41,13 @@ function go() {
     lt = t
     writeSettings()
 }
-// play sound on spacebar
 var lt = 0
+
+// play sound on spacebar
 window.addEventListener('keydown', function (ev) {
-    if (ev.keyCode === 32) go()
+    if (ev.keyCode !== 32) return
+    go()
+    ev.preventDefault()
 })
 
 

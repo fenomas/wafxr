@@ -31,13 +31,23 @@ fx.play({
 To figure out what settings to pass in, 
 open the [demo](https://andyhall.github.io/wafxr/) page and play around.
 
-You can also call `fx.getDefaults()` to get an object with properties
-for every setting `wafxr` understands.
+## Other methods
+
+```js
+// returns an object with all valid settings and their default values
+fx.getDefaults()
+
+// effectively this sets how many soudns can be playing at once   
+fx.setInstrumentCounts(synthCount, noiseCount)  
+```
 
 ## Notes
 
 WIP. Seems to work in sane browsers. 
 Should work on mobile, better or worse depending on which effects you use. 
 
+----
 
+## License
 
+(c) 2016 Andy Hall. MIT License
