@@ -39,6 +39,14 @@ fx.getDefaults()
 
 // effectively this sets how many soudns can be playing at once   
 fx.setInstrumentCounts(synthCount, noiseCount)  
+
+// exposes the Tone.js object if you need it   
+fx._tone
+
+// 3d sound stuff - take it for a spin
+fx.set3DEnabled(bool)            // off by default  
+fx.setListenerPosition(x, y, z)  // sounds don't move dynamically, listener can
+fx.setListenerAngle(degrees)     // 0 -> -Z direction
 ```
 
 ## Notes

@@ -2,8 +2,8 @@
 /* globals dat */
 
 var fx = require('.')
-window.fx = fx
 var $ = document.querySelector.bind(document)
+window.fx = fx
 
 
 // settings object - directly watched by dat-gui
@@ -23,6 +23,11 @@ resetSettings()
 var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 var others = {
     sourceNum: sourceNames.indexOf(settings.source),
+    doing3d: false,
+    listenerX: 0,
+    listenerY: 0,
+    listenerZ: 1,
+    listenerAngle: 0,
 }
 function setSource() {
     settings.source = sourceNames[others.sourceNum]
@@ -36,7 +41,7 @@ function setSourceNum() {
 // play a note on any settings update, with time limiter
 function go() {
     var t = performance.now()
-    if (t - lt < 300) return
+    if (t - lt < replayDelay) return
     fx.play(settings)
     lt = t
     writeSettings()
@@ -61,7 +66,9 @@ $('#ouch').addEventListener('click', onBut.bind(null, 'ouch'))
 $('#power').addEventListener('click', onBut.bind(null, 'power'))
 $('#ui').addEventListener('click', onBut.bind(null, 'ui'))
 
+var replayDelay = 250
 function onBut(type) {
+    if (performance.now() - lt < replayDelay) return
     resetSettings()
     applyPreset(type) // way down below
     setSourceNum()
@@ -82,10 +89,10 @@ function writeSettings() {
 }
 function round(n) {
     if (Math.abs(n) > 1000) return Math.round(n)
-    if (Math.abs(n) > 100) return Math.round(n*10)/10
-    if (Math.abs(n) > 10) return Math.round(n*100)/100
-    if (Math.abs(n) > 1) return Math.round(n*1000)/1000
-    return Math.round(n*10000)/10000
+    if (Math.abs(n) > 100) return Math.round(n * 10) / 10
+    if (Math.abs(n) > 10) return Math.round(n * 100) / 100
+    if (Math.abs(n) > 1) return Math.round(n * 1000) / 1000
+    return Math.round(n * 10000) / 10000
 }
 
 
@@ -99,8 +106,10 @@ var opts = {
 }
 var gui1 = new dat.GUI(opts)
 var gui2 = new dat.GUI(opts)
+var gui3 = new dat.GUI(opts)
 document.querySelector('#menu1').appendChild(gui1.domElement)
 document.querySelector('#menu2').appendChild(gui2.domElement)
+document.querySelector('#menu3').appendChild(gui3.domElement)
 
 
 // main
@@ -135,18 +144,45 @@ f.add(settings, 'tremolo', 0, 1).step(0.01).name('tremolo depth').listen().onCha
 f.add(settings, 'tremoloFreq', 0, 60).step(0.5).name('tremolo frequency').listen().onChange(go)
 f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').listen().onChange(go)
 f.add(settings, 'vibratoFreq', 0, 60).step(0.5).name('vibrato frequency').listen().onChange(go)
-
 var maxFq = settings.lowpass
 f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').listen().onChange(go)
 f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').listen().onChange(go)
 f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 
+f = gui3.addFolder('Spatialization')
+var maxd = 20
+f.add(others, 'doing3d').name('enable 3D sound').onChange(set3d)
+f.add(settings, 'soundX', -maxd, maxd).step(0.1).name('sound pos. X').listen().onChange(go)
+f.add(settings, 'soundY', -maxd, maxd).step(0.1).name('sound pos. Y').listen().onChange(go)
+f.add(settings, 'soundZ', -maxd, maxd).step(0.1).name('sound pos. Z').listen().onChange(go)
+f.add(others, 'listenerX', -maxd, maxd).step(0.1).name('listener pos. X').onChange(setPos)
+f.add(others, 'listenerY', -maxd, maxd).step(0.1).name('listener pos. Y').onChange(setPos)
+f.add(others, 'listenerZ', -maxd, maxd).step(0.1).name('listener pos. Z').onChange(setPos)
+f.add(others, 'listenerAngle', -180, 180).step(1).name('listener forward angle').onChange(setAng)
+function set3d(bool) {
+    fx.set3DEnabled(bool)
+}
+function setPos() {
+    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+    go()
+}
+function setAng() {
+    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+    fx.setListenerAngle(others.listenerAngle)
+    fx.setListenerAngle(others.listenerAngle)
+    go()
+}
+fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+fx.setListenerAngle(others.listenerAngle)
+
 
 window.gui1 = gui1
 window.gui2 = gui2
+window.gui3 = gui3
 for (var s in gui1.__folders) gui1.__folders[s].open()
 for (var s in gui2.__folders) gui2.__folders[s].open()
+// for (var s in gui3.__folders) gui3.__folders[s].open()
 
 console.clear()
 

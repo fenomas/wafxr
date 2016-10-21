@@ -48,8 +48,8 @@
 	/* globals dat */
 
 	var fx = __webpack_require__(1)
-	window.fx = fx
 	var $ = document.querySelector.bind(document)
+	window.fx = fx
 
 
 	// settings object - directly watched by dat-gui
@@ -69,6 +69,11 @@
 	var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 	var others = {
 	    sourceNum: sourceNames.indexOf(settings.source),
+	    doing3d: false,
+	    listenerX: 0,
+	    listenerY: 0,
+	    listenerZ: 1,
+	    listenerAngle: 0,
 	}
 	function setSource() {
 	    settings.source = sourceNames[others.sourceNum]
@@ -82,15 +87,18 @@
 	// play a note on any settings update, with time limiter
 	function go() {
 	    var t = performance.now()
-	    if (t - lt < 300) return
+	    if (t - lt < replayDelay) return
 	    fx.play(settings)
 	    lt = t
 	    writeSettings()
 	}
-	// play sound on spacebar
 	var lt = 0
+
+	// play sound on spacebar
 	window.addEventListener('keydown', function (ev) {
-	    if (ev.keyCode === 32) go()
+	    if (ev.keyCode !== 32) return
+	    go()
+	    ev.preventDefault()
 	})
 
 
@@ -104,7 +112,9 @@
 	$('#power').addEventListener('click', onBut.bind(null, 'power'))
 	$('#ui').addEventListener('click', onBut.bind(null, 'ui'))
 
+	var replayDelay = 250
 	function onBut(type) {
+	    if (performance.now() - lt < replayDelay) return
 	    resetSettings()
 	    applyPreset(type) // way down below
 	    setSourceNum()
@@ -125,10 +135,10 @@
 	}
 	function round(n) {
 	    if (Math.abs(n) > 1000) return Math.round(n)
-	    if (Math.abs(n) > 100) return Math.round(n*10)/10
-	    if (Math.abs(n) > 10) return Math.round(n*100)/100
-	    if (Math.abs(n) > 1) return Math.round(n*1000)/1000
-	    return Math.round(n*10000)/10000
+	    if (Math.abs(n) > 100) return Math.round(n * 10) / 10
+	    if (Math.abs(n) > 10) return Math.round(n * 100) / 100
+	    if (Math.abs(n) > 1) return Math.round(n * 1000) / 1000
+	    return Math.round(n * 10000) / 10000
 	}
 
 
@@ -142,8 +152,10 @@
 	}
 	var gui1 = new dat.GUI(opts)
 	var gui2 = new dat.GUI(opts)
+	var gui3 = new dat.GUI(opts)
 	document.querySelector('#menu1').appendChild(gui1.domElement)
 	document.querySelector('#menu2').appendChild(gui2.domElement)
+	document.querySelector('#menu3').appendChild(gui3.domElement)
 
 
 	// main
@@ -178,18 +190,45 @@
 	f.add(settings, 'tremoloFreq', 0, 60).step(0.5).name('tremolo frequency').listen().onChange(go)
 	f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').listen().onChange(go)
 	f.add(settings, 'vibratoFreq', 0, 60).step(0.5).name('vibrato frequency').listen().onChange(go)
-
 	var maxFq = settings.lowpass
 	f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').listen().onChange(go)
 	f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 	f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').listen().onChange(go)
 	f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 
+	f = gui3.addFolder('Spatialization')
+	var maxd = 20
+	f.add(others, 'doing3d').name('enable 3D sound').onChange(set3d)
+	f.add(settings, 'soundX', -maxd, maxd).step(0.1).name('sound pos. X').listen().onChange(go)
+	f.add(settings, 'soundY', -maxd, maxd).step(0.1).name('sound pos. Y').listen().onChange(go)
+	f.add(settings, 'soundZ', -maxd, maxd).step(0.1).name('sound pos. Z').listen().onChange(go)
+	f.add(others, 'listenerX', -maxd, maxd).step(0.1).name('listener pos. X').onChange(setPos)
+	f.add(others, 'listenerY', -maxd, maxd).step(0.1).name('listener pos. Y').onChange(setPos)
+	f.add(others, 'listenerZ', -maxd, maxd).step(0.1).name('listener pos. Z').onChange(setPos)
+	f.add(others, 'listenerAngle', -180, 180).step(1).name('listener forward angle').onChange(setAng)
+	function set3d(bool) {
+	    fx.set3DEnabled(bool)
+	}
+	function setPos() {
+	    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+	    go()
+	}
+	function setAng() {
+	    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+	    fx.setListenerAngle(others.listenerAngle)
+	    fx.setListenerAngle(others.listenerAngle)
+	    go()
+	}
+	fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
+	fx.setListenerAngle(others.listenerAngle)
+
 
 	window.gui1 = gui1
 	window.gui2 = gui2
+	window.gui3 = gui3
 	for (var s in gui1.__folders) gui1.__folders[s].open()
 	for (var s in gui2.__folders) gui2.__folders[s].open()
+	// for (var s in gui3.__folders) gui3.__folders[s].open()
 
 	console.clear()
 
@@ -331,6 +370,16 @@
 	*/
 
 
+	/**
+	 * 
+	 *      TODO
+	 * spacialization
+	 * bandpass effect or noise frequency
+	 * other effects
+	 * 
+	 */
+
+
 	var defaults = {
 	    attack: 0.01,
 	    decay: 0.01,
@@ -361,6 +410,10 @@
 	    lowpassSweep: 0,
 	    highpass: 0,
 	    highpassSweep: 0,
+
+	    soundX: 0,
+	    soundY: 0,
+	    soundZ: 0.1,
 	}
 
 
@@ -373,6 +426,11 @@
 	*/
 
 	function FX() {
+	    this._tone = Tone
+	    var doing3d = false
+
+	    var defaultSynths = 1
+	    var defaultNoises = 3
 
 	    // input/effect chain - so we can not add effects until they're used
 	    var inputNode = new Tone.Gain(1).toMaster()
@@ -390,20 +448,45 @@
 	    // create instrument pools and getters - separate for synth/noise
 	    var synths = []
 	    var noises = []
-	    while (synths.length < 3) synths.push(new Tone.Synth())
-	    while (noises.length < 2) noises.push(new Tone.NoiseSynth())
-	    synths.concat(noises).forEach(function (v) {
-	        v.envelope.releaseCurve = 'linear'
-	        v.connect(inputNode)
-	    })
+	    function setInstrumentCount(count, noisetype) {
+	        var arr = noisetype ? noises : synths
+	        var ctor = noisetype ? Tone.NoiseSynth : Tone.Synth
+	        while (arr.length > count) {
+	            var old = arr.pop()
+	            if (old._panner) {
+	                old._panner.disconnect(inputNode)
+	                old.disconnect(old._panner)
+	                old._panner.dispose()
+	            } else {
+	                old.disconnect(inputNode)
+	            }
+	            old.dispose()
+	        }
+	        while (arr.length < count) {
+	            var inst = new ctor()
+	            inst.volume.value = -100
+	            if (doing3d) {
+	                var panner = new Tone.Panner3D()
+	                inst.chain(panner, inputNode)
+	                inst._panner = panner
+	            } else {
+	                inst.connect(inputNode)
+	            }
+	            inst.envelope.releaseCurve = 'linear'
+	            inst._playingUntil = 0
+	            arr.push(inst)
+	        }
+	    }
+	    setInstrumentCount(defaultSynths, false)
+	    setInstrumentCount(defaultNoises, true)
+
 	    var getSynth = makeObjectPoolGetter(synths)
 	    var getNoise = makeObjectPoolGetter(noises)
 
-	    // todo: remove
-	    window.Tone = Tone
-	    window.synth = synths[0]
-	    window.noise = noises[0]
-	    window.chain = nodeChain
+	    // window.Tone = Tone
+	    // window.synth = synths[0]
+	    // window.noise = noises[0]
+	    // window.chain = nodeChain
 
 
 
@@ -420,6 +503,33 @@
 	    }
 
 
+	    this.setInstrumentCounts = function (synthCount, noiseCount) {
+	        synthCount = isNaN(synthCount) ? defaultSynths : synthCount
+	        noiseCount = isNaN(noiseCount) ? defaultNoises : noiseCount
+	        setInstrumentCount(synthCount, false)
+	        setInstrumentCount(noiseCount, true)
+	    }
+
+
+	    this.set3DEnabled = function (enabled) {
+	        var s = synths.length
+	        var n = noises.length
+	        doing3d = !!enabled
+	        this.setInstrumentCounts(0, 0)
+	        this.setInstrumentCounts(s, n)
+	    }
+
+	    this.setListenerPosition = function (x, y, z) {
+	        Tone.Listener.setPosition(x, y, z)
+	    }
+
+	    this.setListenerAngle = function (angle) {
+	        // 0 => -Z direction
+	        var theta = angle * Math.PI / 180
+	        Tone.Listener.forwardX = Math.sin(theta)
+	        Tone.Listener.forwardZ = -Math.cos(theta)
+	    }
+
 	    this.play = function (settings) {
 	        var s = settings || {}
 
@@ -428,6 +538,7 @@
 	        var sustain = isNaN(s.sustain) ? defaults.sustain : s.sustain
 	        var release = isNaN(s.release) ? defaults.release : s.release
 	        var sustainLevel = isNaN(s.sustainLevel) ? defaults.sustainLevel : s.sustainLevel
+	        var inducedDelay = 0
 
 	        var holdTime = sustain + attack + decay
 	        var duration = holdTime + release
@@ -454,39 +565,41 @@
 	            }
 	        }
 
-	        // Trigger instruments and schedule frequency changes
+	        // determine instrument and set up envelope, basic settings
 	        var source = s.source || defaults.source
-	        if (/noise/.test(source)) {
+	        var isNoise = /noise/.test(source)
+	        var inst = (isNoise) ? getNoise() : getSynth()
 
-	            var noise = getNoise()
-	            noise.volume.value = s.volume || 0
-	            noise.noise.type = source.split(' ')[0]
-	            noise.envelope.attack = attack
-	            noise.envelope.decay = decay
-	            noise.envelope.sustain = sustainLevel
-	            noise.envelope.release = release
+	        if (now < inst._playingUntil) inducedDelay = 0.05
+	        setVolume(inst.volume, s.volume || 0, inducedDelay, duration)
+	        setSoundEnvelope(inst, attack, decay, sustainLevel, release, inducedDelay)
+	        setSoundPosition(inst, s.soundX, s.soundY, s.soundZ, inducedDelay)
+	        
+	        inst._playingUntil = now + duration + inducedDelay
 
-	            noise.triggerAttackRelease(holdTime)
+
+	        if (isNoise) {
+
+	            // noise-specific settings
+	            inst.noise.type = source.split(' ')[0]
+	            inst.triggerAttackRelease(holdTime, now + inducedDelay)
 
 	        } else {
 
-	            var synth = getSynth()
-	            synth.volume.value = s.volume || 0
+	            // synth-specific settings - frequencies, sweeps, jumps, etc.
+
 	            var isPulse = (source == 'pulse')
 	            if (!isPulse && s.harmonics > 0) source += s.harmonics
-	            synth.oscillator.type = source
-	            if (isPulse) synth.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
-	            synth.envelope.attack = attack
-	            synth.envelope.decay = decay
-	            synth.envelope.sustain = sustainLevel
-	            synth.envelope.release = release
+	            inst.oscillator.type = source
+	            if (isPulse) inst.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
 
-	            synth.triggerAttackRelease(0, holdTime)
+	            var freqSetting = s.frequency || defaults.frequency
+	            var f0 = inst.toFrequency(freqSetting)
+	            inst.triggerAttackRelease(f0, holdTime, now + inducedDelay)
+	            inst._playingUntil = now + duration + inducedDelay
 
 	            // set up necessary frequency values with sweeps and jumps
 	            // times are scaled to t0=0, tn=1, for now
-	            var freqSetting = s.frequency || defaults.frequency
-	            var f0 = synth.toFrequency(freqSetting)
 	            var fn = s.sweep ? f0 * (1 + s.sweep) : f0
 	            var t0 = 0
 	            var tn = 1
@@ -518,7 +631,7 @@
 	            if (period > duration) period = duration
 
 	            // init state for scheduling ramps and jumps
-	            var fq = synth.frequency
+	            var fq = inst.frequency
 	            fq.value = f0
 	            var currF = f0
 	            var currT = Tone.now()
@@ -543,6 +656,7 @@
 	                currT += period
 	            }
 	        }
+
 	    }
 
 	}
@@ -651,8 +765,53 @@
 	 * 
 	*/
 
-	function rampParam(param, value) {
-	    if (param.value != value) param.rampTo(value, 0.02)
+	function setVolume(volume, value, delay, duration) {
+	    var now = Tone.now()
+	    volume.cancelScheduledValues()
+	    if (delay === 0) {
+	        volume.rampTo(value, 0.001)
+	        volume.setValueAtTime(value, now + duration)
+	        volume.exponentialRampToValueAtTime(-100, now + duration + 0.1)
+	    } else {
+	        // sound is already playing, so ramp it down and then up to avoid clicks
+	        volume.rampTo(-100, delay)
+	        volume.setValueAtTime(-100, now + delay)
+	        volume.exponentialRampToValueAtTime(value, now + 2 * delay)
+	    }
+	}
+
+
+	function setSoundEnvelope(instrument, a, d, s, r) {
+	    instrument.envelope.attack = a
+	    instrument.envelope.decay = d
+	    instrument.envelope.sustain = s
+	    instrument.envelope.release = r
+	}
+
+	function setSoundPosition(instrument, x, y, z, delay) {
+	    if (!instrument._panner) return
+	    if (isNaN(x)) x = defaults.soundX
+	    if (isNaN(y)) y = defaults.soundY
+	    if (isNaN(z)) z = defaults.soundZ
+	    // directly access the webaudio node to control ramp times
+	    // https://github.com/Tonejs/Tone.js/blob/master/Tone/component/Panner3D.js#L95
+	    var node = instrument._panner._panner
+	    if (isNaN(node.positionX)) {
+	        if (delay) {
+	            var now = Tone.now()
+	            node.positionX.linearRampToValueAtTime(x, now + delay)
+	            node.positionY.linearRampToValueAtTime(y, now + delay)
+	            node.positionZ.linearRampToValueAtTime(z, now + delay)
+	        } else {
+	            node.positionX.value = x
+	            node.positionY.value = y
+	            node.positionZ.value = z
+	        }
+	    } else {
+	        // think this is a fallback for older webaudio implementations
+	        node.setPosition(x, y, z)
+	        instrument._panner.setPosition(x, y, z)
+	    }
 	}
 
 	function doJump(signal, value, time) {
@@ -673,8 +832,7 @@
 
 	function makeObjectPoolGetter(arr) {
 	    var i = 0
-	    var n = arr.length
-	    return function () { return arr[i++ % n] }
+	    return function () { return arr[i++ % arr.length] }
 	}
 
 

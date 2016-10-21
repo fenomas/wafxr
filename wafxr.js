@@ -43,6 +43,10 @@ var defaults = {
     lowpassSweep: 0,
     highpass: 0,
     highpassSweep: 0,
+
+    soundX: 0,
+    soundY: 0,
+    soundZ: 0.1,
 }
 
 
@@ -55,6 +59,11 @@ var defaults = {
 */
 
 function FX() {
+    this._tone = Tone
+    var doing3d = false
+
+    var defaultSynths = 1
+    var defaultNoises = 3
 
     // input/effect chain - so we can not add effects until they're used
     var inputNode = new Tone.Gain(1).toMaster()
@@ -76,19 +85,33 @@ function FX() {
         var arr = noisetype ? noises : synths
         var ctor = noisetype ? Tone.NoiseSynth : Tone.Synth
         while (arr.length > count) {
-            var rem = arr.pop()
-            rem.disconnect(inputNode)
-            rem.dispose()
+            var old = arr.pop()
+            if (old._panner) {
+                old._panner.disconnect(inputNode)
+                old.disconnect(old._panner)
+                old._panner.dispose()
+            } else {
+                old.disconnect(inputNode)
+            }
+            old.dispose()
         }
         while (arr.length < count) {
             var inst = new ctor()
+            inst.volume.value = -100
+            if (doing3d) {
+                var panner = new Tone.Panner3D()
+                inst.chain(panner, inputNode)
+                inst._panner = panner
+            } else {
+                inst.connect(inputNode)
+            }
             inst.envelope.releaseCurve = 'linear'
-            inst.connect(inputNode)
+            inst._playingUntil = 0
             arr.push(inst)
         }
     }
-    setInstrumentCount(3, false)
-    setInstrumentCount(2, true)
+    setInstrumentCount(defaultSynths, false)
+    setInstrumentCount(defaultNoises, true)
 
     var getSynth = makeObjectPoolGetter(synths)
     var getNoise = makeObjectPoolGetter(noises)
@@ -114,12 +137,31 @@ function FX() {
 
 
     this.setInstrumentCounts = function (synthCount, noiseCount) {
-        synthCount = isNaN(synthCount) ? 3 : synthCount
-        noiseCount = isNaN(noiseCount) ? 2 : noiseCount
+        synthCount = isNaN(synthCount) ? defaultSynths : synthCount
+        noiseCount = isNaN(noiseCount) ? defaultNoises : noiseCount
         setInstrumentCount(synthCount, false)
         setInstrumentCount(noiseCount, true)
     }
 
+
+    this.set3DEnabled = function (enabled) {
+        var s = synths.length
+        var n = noises.length
+        doing3d = !!enabled
+        this.setInstrumentCounts(0, 0)
+        this.setInstrumentCounts(s, n)
+    }
+
+    this.setListenerPosition = function (x, y, z) {
+        Tone.Listener.setPosition(x, y, z)
+    }
+
+    this.setListenerAngle = function (angle) {
+        // 0 => -Z direction
+        var theta = angle * Math.PI / 180
+        Tone.Listener.forwardX = Math.sin(theta)
+        Tone.Listener.forwardZ = -Math.cos(theta)
+    }
 
     this.play = function (settings) {
         var s = settings || {}
@@ -129,6 +171,7 @@ function FX() {
         var sustain = isNaN(s.sustain) ? defaults.sustain : s.sustain
         var release = isNaN(s.release) ? defaults.release : s.release
         var sustainLevel = isNaN(s.sustainLevel) ? defaults.sustainLevel : s.sustainLevel
+        var inducedDelay = 0
 
         var holdTime = sustain + attack + decay
         var duration = holdTime + release
@@ -155,39 +198,41 @@ function FX() {
             }
         }
 
-        // Trigger instruments and schedule frequency changes
+        // determine instrument and set up envelope, basic settings
         var source = s.source || defaults.source
-        if (/noise/.test(source)) {
+        var isNoise = /noise/.test(source)
+        var inst = (isNoise) ? getNoise() : getSynth()
 
-            var noise = getNoise()
-            noise.volume.value = s.volume || 0
-            noise.noise.type = source.split(' ')[0]
-            noise.envelope.attack = attack
-            noise.envelope.decay = decay
-            noise.envelope.sustain = sustainLevel
-            noise.envelope.release = release
+        if (now < inst._playingUntil) inducedDelay = 0.05
+        setVolume(inst.volume, s.volume || 0, inducedDelay, duration)
+        setSoundEnvelope(inst, attack, decay, sustainLevel, release, inducedDelay)
+        setSoundPosition(inst, s.soundX, s.soundY, s.soundZ, inducedDelay)
+        
+        inst._playingUntil = now + duration + inducedDelay
 
-            noise.triggerAttackRelease(holdTime)
+
+        if (isNoise) {
+
+            // noise-specific settings
+            inst.noise.type = source.split(' ')[0]
+            inst.triggerAttackRelease(holdTime, now + inducedDelay)
 
         } else {
 
-            var synth = getSynth()
-            synth.volume.value = s.volume || 0
+            // synth-specific settings - frequencies, sweeps, jumps, etc.
+
             var isPulse = (source == 'pulse')
             if (!isPulse && s.harmonics > 0) source += s.harmonics
-            synth.oscillator.type = source
-            if (isPulse) synth.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
-            synth.envelope.attack = attack
-            synth.envelope.decay = decay
-            synth.envelope.sustain = sustainLevel
-            synth.envelope.release = release
+            inst.oscillator.type = source
+            if (isPulse) inst.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
 
-            synth.triggerAttackRelease(0, holdTime)
+            var freqSetting = s.frequency || defaults.frequency
+            var f0 = inst.toFrequency(freqSetting)
+            inst.triggerAttackRelease(f0, holdTime, now + inducedDelay)
+            inst._playingUntil = now + duration + inducedDelay
 
             // set up necessary frequency values with sweeps and jumps
             // times are scaled to t0=0, tn=1, for now
-            var freqSetting = s.frequency || defaults.frequency
-            var f0 = synth.toFrequency(freqSetting)
             var fn = s.sweep ? f0 * (1 + s.sweep) : f0
             var t0 = 0
             var tn = 1
@@ -219,7 +264,7 @@ function FX() {
             if (period > duration) period = duration
 
             // init state for scheduling ramps and jumps
-            var fq = synth.frequency
+            var fq = inst.frequency
             fq.value = f0
             var currF = f0
             var currT = Tone.now()
@@ -244,6 +289,7 @@ function FX() {
                 currT += period
             }
         }
+
     }
 
 }
@@ -352,8 +398,53 @@ function removeEffectNode(chain, index) {
  * 
 */
 
-function rampParam(param, value) {
-    if (param.value != value) param.rampTo(value, 0.02)
+function setVolume(volume, value, delay, duration) {
+    var now = Tone.now()
+    volume.cancelScheduledValues()
+    if (delay === 0) {
+        volume.rampTo(value, 0.001)
+        volume.setValueAtTime(value, now + duration)
+        volume.exponentialRampToValueAtTime(-100, now + duration + 0.1)
+    } else {
+        // sound is already playing, so ramp it down and then up to avoid clicks
+        volume.rampTo(-100, delay)
+        volume.setValueAtTime(-100, now + delay)
+        volume.exponentialRampToValueAtTime(value, now + 2 * delay)
+    }
+}
+
+
+function setSoundEnvelope(instrument, a, d, s, r) {
+    instrument.envelope.attack = a
+    instrument.envelope.decay = d
+    instrument.envelope.sustain = s
+    instrument.envelope.release = r
+}
+
+function setSoundPosition(instrument, x, y, z, delay) {
+    if (!instrument._panner) return
+    if (isNaN(x)) x = defaults.soundX
+    if (isNaN(y)) y = defaults.soundY
+    if (isNaN(z)) z = defaults.soundZ
+    // directly access the webaudio node to control ramp times
+    // https://github.com/Tonejs/Tone.js/blob/master/Tone/component/Panner3D.js#L95
+    var node = instrument._panner._panner
+    if (isNaN(node.positionX)) {
+        if (delay) {
+            var now = Tone.now()
+            node.positionX.linearRampToValueAtTime(x, now + delay)
+            node.positionY.linearRampToValueAtTime(y, now + delay)
+            node.positionZ.linearRampToValueAtTime(z, now + delay)
+        } else {
+            node.positionX.value = x
+            node.positionY.value = y
+            node.positionZ.value = z
+        }
+    } else {
+        // think this is a fallback for older webaudio implementations
+        node.setPosition(x, y, z)
+        instrument._panner.setPosition(x, y, z)
+    }
 }
 
 function doJump(signal, value, time) {
