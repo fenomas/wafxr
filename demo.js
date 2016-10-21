@@ -145,10 +145,13 @@ f.add(settings, 'tremoloFreq', 0, 60).step(0.5).name('tremolo frequency').listen
 f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').listen().onChange(go)
 f.add(settings, 'vibratoFreq', 0, 60).step(0.5).name('vibrato frequency').listen().onChange(go)
 var maxFq = settings.lowpass
-f.add(settings, 'lowpass', 0, maxFq).step(1).name('lowpass frequency').listen().onChange(go)
+f.add(settings, 'lowpass', 10, maxFq).step(1).name('lowpass frequency').listen().onChange(go)
 f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
-f.add(settings, 'highpass', 0, maxFq).step(1).name('highpass frequency').listen().onChange(go)
+f.add(settings, 'highpass', 10, maxFq).step(1).name('highpass frequency').listen().onChange(go)
 f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
+f.add(settings, 'bandpassQ', 0.01, 10).step(0.01).name('bandpass Q').listen().onChange(go)
+f.add(settings, 'bandpass', 10, maxFq).step(1).name('　　　↑ frequency').listen().onChange(go)
+f.add(settings, 'bandpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 
 f = gui3.addFolder('Spatialization')
 var maxd = 20
@@ -235,15 +238,17 @@ function applyPreset(type) {
         settings.source = rarr(['white noise', 'brown noise', 'pink noise'])
         settings.sustain = rand(0.05, 0.15)
         settings.release = rand(0.3, 0.5)
+        settings.bandpass = rlog(1000, 12000)
+        settings.bandpassSweep = rand(-settings.bandpass, -settings.bandpass / 8)
+        settings.bandpassQ = rand(0.5, 4)
         if (rint(0, 2)) {
             settings.tremolo = rand(0.1, 0.7)
             settings.tremoloFreq = rlog(5, 60)
         }
-        if (rint(0, 2)) {
-            settings.lowpass = rlog(1000, 8000)
+        if (rint(0, 1.3)) {
+            settings.lowpass = rlog(3000, 8000)
             settings.lowpassSweep = rand(-2000, 2000)
-        }
-        if (rint(0, 2)) {
+        } else if (rint(0, 1.3)) {
             settings.highpass = rlog(100, 1500)
             settings.highpassSweep = rand(-2000, 2000)
         }
@@ -265,10 +270,18 @@ function applyPreset(type) {
         settings.source = rarr(['square', 'sawtooth', 'white noise', 'pink noise', 'brown noise'])
         settings.sustain = rand(0.05, 0.1)
         settings.release = rand(0.05, 0.15)
-        settings.frequency = rlog(400, 1400)
-        settings.sweep = rand(-0.5, -0.05)
-        settings.lowpass = rand(1000, 8000)
-        settings.lowpassSweep = rand(-settings.lowpass, 4000)
+        if (/noise/.test(settings.source)) {
+            settings.bandpass = rlog(500, 1000)
+            settings.bandpassSweep = rand(-settings.bandpass, -settings.bandpass / 8)
+            settings.bandpassQ = rand(0.5, 4)
+        } else {
+            settings.frequency = rlog(400, 1400)
+            settings.sweep = rand(-0.5, -0.05)
+        }
+        if (rint(0, 2)) {
+            settings.lowpass = rand(1000, 8000)
+            settings.lowpassSweep = rand(-settings.lowpass, 4000)
+        }
     }
 
     if (type == 'power') {

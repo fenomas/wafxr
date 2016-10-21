@@ -41,8 +41,11 @@ var defaults = {
 
     lowpass: 10000,
     lowpassSweep: 0,
-    highpass: 0,
+    highpass: 10,
     highpassSweep: 0,
+    bandpass: 500,
+    bandpassQ: 0.01,
+    bandpassSweep: 0,
 
     soundX: 0,
     soundY: 0,
@@ -62,7 +65,7 @@ function FX() {
     this._tone = Tone
     var doing3d = false
 
-    var defaultSynths = 1
+    var defaultSynths = 3
     var defaultNoises = 3
 
     // input/effect chain - so we can not add effects until they're used
@@ -73,10 +76,14 @@ function FX() {
         new TremoloEffect(),
         new LowpassEffect(),
         new HighpassEffect(),
+        new BandpassEffect(),
         new BitCrusherEffect(),
     ]
-    var nodeChain = [inputNode, null, null, null, null, null, Tone.Master]
-    var effectLastUsed = [0, 0, 0, 0, 0, 0]
+    var nodeChain = [inputNode]
+    var effectLastUsed = []
+    while (effectLastUsed.length < effects.length) effectLastUsed.push(null)
+    while (nodeChain.length < effects.length) nodeChain.push(null)
+    nodeChain.push(Tone.Master)
 
     // create instrument pools and getters - separate for synth/noise
     var synths = []
@@ -207,7 +214,7 @@ function FX() {
         setVolume(inst.volume, s.volume || 0, inducedDelay, duration)
         setSoundEnvelope(inst, attack, decay, sustainLevel, release, inducedDelay)
         setSoundPosition(inst, s.soundX, s.soundY, s.soundZ, inducedDelay)
-        
+
         inst._playingUntil = now + duration + inducedDelay
 
 
@@ -331,7 +338,7 @@ function LowpassEffect() {
         var freq = settings.lowpass || defaults.lowpass
         var sweep = settings.lowpassSweep || defaults.lowpassSweep
         node.frequency.value = freq
-        if (sweep) node.frequency.rampTo(freq + sweep, duration)
+        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
     }
 }
 
@@ -339,13 +346,29 @@ function HighpassEffect() {
     this.node = null
     this.create = function () { return new Tone.Filter(0, 'highpass') }
     this.isNeeded = function (settings) {
-        return (settings.highpass > 0 || settings.highpassSweep > 0)
+        return (settings.highpass > defaults.highpass || settings.highpassSweep > 0)
     }
     this.apply = function (node, settings, duration) {
         var freq = settings.highpass || defaults.highpass
         var sweep = settings.highpassSweep || defaults.highpassSweep
         node.frequency.value = freq
-        if (sweep) node.frequency.rampTo(freq + sweep, duration)
+        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
+    }
+}
+
+function BandpassEffect() {
+    this.node = null
+    this.create = function () { return new Tone.Filter(0, 'bandpass') }
+    this.isNeeded = function (settings) {
+        return (settings.bandpassQ > defaults.bandpassQ)
+    }
+    this.apply = function (node, settings, duration) {
+        var freq = settings.bandpass || defaults.bandpass
+        var q = settings.bandpassQ || defaults.bandpassQ
+        var sweep = settings.bandpassSweep || defaults.bandpassSweep
+        node.frequency.value = freq
+        node.Q.value = q
+        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
     }
 }
 
