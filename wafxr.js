@@ -1,6 +1,9 @@
 'use strict'
 
+
 var Tone = require('tone')
+var nodeDefs = require('./lib/nodeDefs')(Tone)
+var NodePool = require('./lib/nodePool')
 
 module.exports = new FX()
 
@@ -8,10 +11,9 @@ module.exports = new FX()
 
 /*
  *  
- *   Defaults - these are all the options wafxr recognizes
+ *      Defaults - these are all the options wafxr recognizes
  *  
 */
-
 
 var defaults = {
     attack: 0.01,
@@ -47,9 +49,15 @@ var defaults = {
     bandpassQ: 0.01,
     bandpassSweep: 0,
 
+    compressorThreshold: 0,
+    // compressorRatio: 12,
+    // compressorRelease: 0.25,     // I could be crazy but the rest 
+    // compressorAttack: 0.003,     // of these don't seem to be worth including
+    // compressorKnee: 30,
+
     soundX: 0,
     soundY: 0,
-    soundZ: 0.1,
+    soundZ: 0,
 }
 
 
@@ -63,70 +71,28 @@ var defaults = {
 
 function FX() {
     this._tone = Tone
-    var doing3d = false
 
-    var defaultSynths = 3
-    var defaultNoises = 3
+    // big bunch of Tone node pools
+    var synthPool = new NodePool(nodeDefs.Synth)
+    var noisePool = new NodePool(nodeDefs.Noise)
 
-    // input/effect chain - so we can not add effects until they're used
-    var inputNode = new Tone.Gain(1).toMaster()
-    var effects = [
-        null,
-        new VibratoEffect(),
-        new TremoloEffect(),
-        new LowpassEffect(),
-        new HighpassEffect(),
-        new BandpassEffect(),
-        new BitCrusherEffect(),
+    // effect node definitions, and pools for same
+    var effectDefs = [
+        nodeDefs.Panner,
+        nodeDefs.Vibrato,
+        nodeDefs.Tremolo,
+        nodeDefs.Lowpass,
+        nodeDefs.Highpass,
+        nodeDefs.Bandpass,
+        nodeDefs.BitCrusher,
+        nodeDefs.Compressor,
     ]
-    var nodeChain = [inputNode]
-    var effectLastUsed = []
-    while (effectLastUsed.length < effects.length) effectLastUsed.push(null)
-    while (nodeChain.length < effects.length) nodeChain.push(null)
-    nodeChain.push(Tone.Master)
+    var effectPools = effectDefs.map(function (def) {
+        return new NodePool(def)
+    })
 
-    // create instrument pools and getters - separate for synth/noise
-    var synths = []
-    var noises = []
-    function setInstrumentCount(count, noisetype) {
-        var arr = noisetype ? noises : synths
-        var ctor = noisetype ? Tone.NoiseSynth : Tone.Synth
-        while (arr.length > count) {
-            var old = arr.pop()
-            if (old._panner) {
-                old._panner.disconnect(inputNode)
-                old.disconnect(old._panner)
-                old._panner.dispose()
-            } else {
-                old.disconnect(inputNode)
-            }
-            old.dispose()
-        }
-        while (arr.length < count) {
-            var inst = new ctor()
-            inst.volume.value = -100
-            if (doing3d) {
-                var panner = new Tone.Panner3D()
-                inst.chain(panner, inputNode)
-                inst._panner = panner
-            } else {
-                inst.connect(inputNode)
-            }
-            inst.envelope.releaseCurve = 'linear'
-            inst._playingUntil = 0
-            arr.push(inst)
-        }
-    }
-    setInstrumentCount(defaultSynths, false)
-    setInstrumentCount(defaultNoises, true)
-
-    var getSynth = makeObjectPoolGetter(synths)
-    var getNoise = makeObjectPoolGetter(noises)
-
-    // window.Tone = Tone
-    // window.synth = synths[0]
-    // window.noise = noises[0]
-    // window.chain = nodeChain
+    // single output for master volume control
+    var outputNode = new Tone.Gain(1).toMaster()
 
 
 
@@ -142,21 +108,9 @@ function FX() {
         return obj
     }
 
-
-    this.setInstrumentCounts = function (synthCount, noiseCount) {
-        synthCount = isNaN(synthCount) ? defaultSynths : synthCount
-        noiseCount = isNaN(noiseCount) ? defaultNoises : noiseCount
-        setInstrumentCount(synthCount, false)
-        setInstrumentCount(noiseCount, true)
-    }
-
-
-    this.set3DEnabled = function (enabled) {
-        var s = synths.length
-        var n = noises.length
-        doing3d = !!enabled
-        this.setInstrumentCounts(0, 0)
-        this.setInstrumentCounts(s, n)
+    this.setVolume = function (v) {
+        v = (v < 0) ? 0 : (v > 1) ? 1 : v
+        outputNode.gain.value = v
     }
 
     this.setListenerPosition = function (x, y, z) {
@@ -164,91 +118,68 @@ function FX() {
     }
 
     this.setListenerAngle = function (angle) {
-        // 0 => -Z direction
         var theta = angle * Math.PI / 180
         Tone.Listener.forwardX = Math.sin(theta)
         Tone.Listener.forwardZ = -Math.cos(theta)
     }
 
-    this.play = function (settings) {
-        var s = settings || {}
+    this._report = function () {
+        console.log(effectPools.map(n => n._getSize()))
+    }
 
-        var attack = isNaN(s.attack) ? defaults.attack : s.attack
-        var decay = isNaN(s.decay) ? defaults.decay : s.decay
-        var sustain = isNaN(s.sustain) ? defaults.sustain : s.sustain
-        var release = isNaN(s.release) ? defaults.release : s.release
-        var sustainLevel = isNaN(s.sustainLevel) ? defaults.sustainLevel : s.sustainLevel
-        var inducedDelay = 0
+    this.play = function (settings) {
+        var sets = settings || {}
+        var defs = defaults
+
+        var attack = isNaN(sets.attack) ? defs.attack : sets.attack
+        var decay = isNaN(sets.decay) ? defs.decay : sets.decay
+        var sustain = isNaN(sets.sustain) ? defs.sustain : sets.sustain
+        var release = isNaN(sets.release) ? defs.release : sets.release
+        var sustainLevel = isNaN(sets.sustainLevel) ? defs.sustainLevel : sets.sustainLevel
 
         var holdTime = sustain + attack + decay
         var duration = holdTime + release
         var now = Tone.now()
 
-        // run through effect chain, setting properties and adding/removing nodes
-        for (var i = 1; i < effects.length; i++) {
-            var effect = effects[i]
-            var needed = effect.isNeeded(s)
-            if (!effect.node) {
-                if (!needed) continue
-                effect.node = effect.create()
-                insertEffectNode(nodeChain, effect.node, i)
-            }
-            if (effect.node) {
-                effect.apply(effect.node, s, duration)
-                if (needed) effectLastUsed[i] = now + duration
-            }
-            if (effect.node.wet) effect.node.wet.value = (needed) ? 1 : 0
-            // remove nodes from chain if not needed lately
-            if (effect.node && effectLastUsed[i] < now - 3) {
-                removeEffectNode(nodeChain, i)
-                effect.node = null
-            }
-        }
 
         // determine instrument and set up envelope, basic settings
-        var source = s.source || defaults.source
+        var source = sets.source || defs.source
         var isNoise = /noise/.test(source)
-        var inst = (isNoise) ? getNoise() : getSynth()
-
-        if (now < inst._playingUntil) inducedDelay = 0.05
-        setVolume(inst.volume, s.volume || 0, inducedDelay, duration)
-        setSoundEnvelope(inst, attack, decay, sustainLevel, release, inducedDelay)
-        setSoundPosition(inst, s.soundX, s.soundY, s.soundZ, inducedDelay)
-
-        inst._playingUntil = now + duration + inducedDelay
+        var inst = (isNoise) ?
+            noisePool.getFor(duration) :
+            synthPool.getFor(duration)
+        setVolume(inst.volume, sets.volume || 0, now, duration)
+        setSoundEnvelope(inst, attack, decay, sustainLevel, release)
 
 
         if (isNoise) {
-
             // noise-specific settings
+
             inst.noise.type = source.split(' ')[0]
-            inst.triggerAttackRelease(holdTime, now + inducedDelay)
+            inst.triggerAttackRelease(holdTime)
 
         } else {
-
             // synth-specific settings - frequencies, sweeps, jumps, etc.
 
             var isPulse = (source == 'pulse')
-            if (!isPulse && s.harmonics > 0) source += s.harmonics
+            if (!isPulse && sets.harmonics > 0) source += sets.harmonics
             inst.oscillator.type = source
-            if (isPulse) inst.oscillator.width.value = s.pulseWidth || defaults.pulseWidth
+            if (isPulse) inst.oscillator.width.value = sets.pulseWidth || defs.pulseWidth
 
-            var freqSetting = s.frequency || defaults.frequency
+            var freqSetting = sets.frequency || defs.frequency
             var f0 = inst.toFrequency(freqSetting)
-            inst.triggerAttackRelease(f0, holdTime, now + inducedDelay)
-            inst._playingUntil = now + duration + inducedDelay
 
             // set up necessary frequency values with sweeps and jumps
             // times are scaled to t0=0, tn=1, for now
-            var fn = s.sweep ? f0 * (1 + s.sweep) : f0
+            var fn = sets.sweep ? f0 * (1 + sets.sweep) : f0
             var t0 = 0
             var tn = 1
 
             // calculate ramp/jump values
-            var t1 = tn * (s.jumpAt1 || defaults.jumpAt1)
-            var t2 = tn * (s.jumpAt2 || defaults.jumpAt2)
-            var j1 = s.jumpBy1 || 0
-            var j2 = s.jumpBy2 || 0
+            var t1 = tn * (sets.jumpAt1 || defs.jumpAt1)
+            var t2 = tn * (sets.jumpAt2 || defs.jumpAt2)
+            var j1 = sets.jumpBy1 || 0
+            var j2 = sets.jumpBy2 || 0
             if (t2 < t1) {
                 var _temp = t1; t1 = t2; t2 = _temp
                 _temp = j1; j1 = j2; j2 = _temp
@@ -265,7 +196,7 @@ function FX() {
             fn += f2b - f2
 
             // period for repeating the whole sweep/jump process
-            var repeat = s.repeat || 0
+            var repeat = sets.repeat || 0
             if (repeat > 100) repeat = 100
             var period = repeat ? 1 / repeat : duration
             if (period > duration) period = duration
@@ -295,123 +226,32 @@ function FX() {
                 if (currF != fn) currF = doRamp(fq, fn, currT + tn)
                 currT += period
             }
+
+            // actual sound trigger
+            inst.triggerAttackRelease(f0, holdTime)
+
         }
 
+
+        // run through effect chain, getting and connecting necessary nodes
+        // then set a timeout to disconnect them afterwards
+        var chain = [inst]
+        for (var i = 0; i < effectDefs.length; i++) {
+            var effect = effectDefs[i]
+            if (effect.isNeeded(sets, defs)) {
+                var node = effectPools[i].getFor(duration)
+                effect.apply(node, sets, defs, duration)
+                chain[chain.length - 1].connect(node)
+                chain.push(node)
+            }
+            effectPools[i].free()
+        }
+        chain[chain.length - 1].connect(outputNode)
+        chain.push(outputNode)
+        setTimeout(disconnectAudioChain, (duration + 0.2) * 1000, chain)
     }
 
 }
-
-
-/*
- * 
- *      Abstracted classes for each applicable effect
- * 
-*/
-
-function VibratoEffect() {
-    this.node = null
-    this.create = function () { return new Tone.Vibrato(5, 1) }
-    this.isNeeded = function (settings) { return (settings.vibrato > 0) }
-    this.apply = function (node, settings, duration) {
-        node.depth.value = settings.vibrato || defaults.vibrato
-        node.frequency.value = settings.vibratoFreq || defaults.vibratoFreq
-    }
-}
-
-function TremoloEffect() {
-    this.node = null
-    this.create = function () { return new Tone.Tremolo(5, 1).start() }
-    this.isNeeded = function (settings) { return (settings.tremolo > 0) }
-    this.apply = function (node, settings, duration) {
-        node.depth.value = settings.tremolo || defaults.tremolo
-        node.frequency.value = settings.tremoloFreq || defaults.tremoloFreq
-    }
-}
-
-function LowpassEffect() {
-    this.node = null
-    this.create = function () { return new Tone.Filter(20000, 'lowpass') }
-    this.isNeeded = function (settings) {
-        return (settings.lowpass < defaults.lowpass || settings.lowpassSweep < 0)
-    }
-    this.apply = function (node, settings, duration) {
-        var freq = settings.lowpass || defaults.lowpass
-        var sweep = settings.lowpassSweep || defaults.lowpassSweep
-        node.frequency.value = freq
-        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
-    }
-}
-
-function HighpassEffect() {
-    this.node = null
-    this.create = function () { return new Tone.Filter(0, 'highpass') }
-    this.isNeeded = function (settings) {
-        return (settings.highpass > defaults.highpass || settings.highpassSweep > 0)
-    }
-    this.apply = function (node, settings, duration) {
-        var freq = settings.highpass || defaults.highpass
-        var sweep = settings.highpassSweep || defaults.highpassSweep
-        node.frequency.value = freq
-        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
-    }
-}
-
-function BandpassEffect() {
-    this.node = null
-    this.create = function () { return new Tone.Filter(0, 'bandpass') }
-    this.isNeeded = function (settings) {
-        return (settings.bandpassQ > defaults.bandpassQ)
-    }
-    this.apply = function (node, settings, duration) {
-        var freq = settings.bandpass || defaults.bandpass
-        var q = settings.bandpassQ || defaults.bandpassQ
-        var sweep = settings.bandpassSweep || defaults.bandpassSweep
-        node.frequency.value = freq
-        node.Q.value = q
-        if (sweep) node.frequency.rampTo(Math.max(10, freq + sweep), duration)
-    }
-}
-
-function BitCrusherEffect() {
-    this.node = null
-    this.create = function () { return new Tone.BitCrusher(8) }
-    this.isNeeded = function (settings) { return (settings.bitcrush > 0) }
-    this.apply = function (node, settings, duration) {
-        node.bits = settings.bitcrush || defaults.bitcrush
-    }
-}
-
-
-
-
-
-// helpers for handling connections in the effect chain
-
-function insertEffectNode(chain, node, index) {
-    if (chain[index]) throw 'Tried to add existing effect to chain'
-    var prev = index, next = index
-    while (!chain[prev]) prev--
-    while (!chain[next]) next++
-    chain[prev].disconnect(chain[next])
-    chain[prev].chain(node, chain[next])
-    chain[index] = node
-}
-
-function removeEffectNode(chain, index) {
-    var node = chain[index]
-    if (!node) throw 'Tried to remove nonexistent effect from chain'
-    var prev = index - 1, next = index + 1
-    while (!chain[prev]) prev--
-    while (!chain[next]) next++
-    chain[prev].disconnect(node)
-    node.disconnect(chain[next])
-    chain[prev].connect(chain[next])
-    node.dispose()
-    chain[index] = null
-}
-
-
-
 
 
 
@@ -421,53 +261,27 @@ function removeEffectNode(chain, index) {
  * 
 */
 
-function setVolume(volume, value, delay, duration) {
-    var now = Tone.now()
-    volume.cancelScheduledValues()
-    if (delay === 0) {
-        volume.rampTo(value, 0.001)
-        volume.setValueAtTime(value, now + duration)
-        volume.exponentialRampToValueAtTime(-100, now + duration + 0.1)
-    } else {
-        // sound is already playing, so ramp it down and then up to avoid clicks
-        volume.rampTo(-100, delay)
-        volume.setValueAtTime(-100, now + delay)
-        volume.exponentialRampToValueAtTime(value, now + 2 * delay)
+function disconnectAudioChain(chain) {
+    for (var j = 0; j < chain.length - 1; j++) {
+        chain[j].disconnect(chain[j + 1])
     }
+    chain.length = 0
 }
 
+function setVolume(volume, value, now, duration) {
+    volume.value = value // seems to be sufficient now that we pool audio nodes
+    // volume.cancelScheduledValues()
+    // volume.value = -100
+    // volume.rampTo(value, 0.001)
+    // volume.setValueAtTime(value, now + duration)
+    // volume.exponentialRampToValueAtTime(-100, now + duration + 0.1)
+}
 
 function setSoundEnvelope(instrument, a, d, s, r) {
     instrument.envelope.attack = a
     instrument.envelope.decay = d
     instrument.envelope.sustain = s
     instrument.envelope.release = r
-}
-
-function setSoundPosition(instrument, x, y, z, delay) {
-    if (!instrument._panner) return
-    if (isNaN(x)) x = defaults.soundX
-    if (isNaN(y)) y = defaults.soundY
-    if (isNaN(z)) z = defaults.soundZ
-    // directly access the webaudio node to control ramp times
-    // https://github.com/Tonejs/Tone.js/blob/master/Tone/component/Panner3D.js#L95
-    var node = instrument._panner._panner
-    if (isNaN(node.positionX)) {
-        if (delay) {
-            var now = Tone.now()
-            node.positionX.linearRampToValueAtTime(x, now + delay)
-            node.positionY.linearRampToValueAtTime(y, now + delay)
-            node.positionZ.linearRampToValueAtTime(z, now + delay)
-        } else {
-            node.positionX.value = x
-            node.positionY.value = y
-            node.positionZ.value = z
-        }
-    } else {
-        // think this is a fallback for older webaudio implementations
-        node.setPosition(x, y, z)
-        instrument._panner.setPosition(x, y, z)
-    }
 }
 
 function doJump(signal, value, time) {
@@ -486,9 +300,5 @@ function fqInterpolate(t0, t1, v0, v1, t) {
     return v0 * Math.pow(v1 / v0, (t - t0) / (t1 - t0))
 }
 
-function makeObjectPoolGetter(arr) {
-    var i = 0
-    return function () { return arr[i++ % arr.length] }
-}
 
 

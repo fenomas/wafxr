@@ -3,11 +3,12 @@
 
 var config = {
 	entry: {
-		index: './demo.js'
+		bundle: './docs/demo.js',
+		bench: './docs/bench.js'
 	},
 	output: {
         path: __dirname + "/docs",
-		filename: 'bundle.js',
+		filename: "[name].js"
 	},
 	devServer: {
 		contentBase: 'docs/', // make sure static assets aren't found unless copied over
