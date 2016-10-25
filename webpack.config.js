@@ -4,7 +4,7 @@
 var config = {
 	entry: {
 		bundle: './docs/demo.js',
-		bench: './docs/bench.js'
+		bench_bundle: './docs/bench.js'
 	},
 	output: {
         path: __dirname + "/docs",
