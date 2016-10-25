@@ -58,6 +58,7 @@ var defaults = {
     soundX: 0,
     soundY: 0,
     soundZ: 0,
+    rolloff: 1,
 }
 
 
@@ -123,9 +124,9 @@ function FX() {
         Tone.Listener.forwardZ = -Math.cos(theta)
     }
 
-    this._report = function () {
-        console.log(effectPools.map(n => n._getSize()))
-    }
+    // this._report = function () {
+    //     console.log(effectPools.map(n => n._getSize()))
+    // }
 
     this.play = function (settings) {
         var sets = settings || {}
