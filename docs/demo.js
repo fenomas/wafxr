@@ -155,7 +155,7 @@ f.add(settings, 'bandpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep
 // f.add(settings, 'compressorKnee', 0, 40).step(0.1).listen().onChange(go)
 
 f = gui3.addFolder('Globals')
-var maxd = 20
+var maxd = 100
 f.add(others, 'masterVol', 0, 1).step(0.01).name('Master volume').onChange(function (v) { fx.setVolume(v) })
 f.add(others, 'listenerX', -maxd, maxd).step(0.1).name('listener pos. X').onChange(setPos)
 f.add(others, 'listenerY', -maxd, maxd).step(0.1).name('listener pos. Y').onChange(setPos)
