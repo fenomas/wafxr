@@ -24,6 +24,8 @@ resetSettings()
 // additional settings object for menus
 var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
 var others = {
+    autoplay: true,
+    autorepeat: 0,
     masterVol: 1,
     listenerX: 0,
     listenerY: 0,
@@ -35,20 +37,41 @@ var others = {
 
 // play a note on any settings update, with time limiter
 function go() {
+    if (!others.autoplay) return
     var t = performance.now()
-    if (t - lt < replayDelay) return
+    if (t < nextgo) return
+    nextgo = t + replayDelay
+    play()
+}
+var replayDelay = 250
+var nextgo = 0
+
+
+function play() {
     fx.play(settings)
-    lt = t
     writeSettings()
 }
-var lt = 0
+
 
 // play sound on spacebar
 window.addEventListener('keydown', function (ev) {
     if (ev.keyCode !== 32) return
-    go()
+    play()
     ev.preventDefault()
 })
+
+
+// repeat every feature
+function setRepeat(val) { }
+var nextRepeat = 0
+setInterval(function() {
+    if (others.autorepeat < 1) return
+    var now = performance.now()
+    if (now > nextRepeat) {
+        play()
+        nextRepeat = now + others.autorepeat
+    }
+}, 5)
 
 
 // top nav buttons
@@ -61,12 +84,10 @@ $('#ouch').addEventListener('click', onBut.bind(null, 'ouch'))
 $('#power').addEventListener('click', onBut.bind(null, 'power'))
 $('#ui').addEventListener('click', onBut.bind(null, 'ui'))
 
-var replayDelay = 250
 function onBut(type) {
-    if (performance.now() - lt < replayDelay) return
     resetSettings()
     presets.apply(settings, type)
-    go()
+    play()
 }
 
 
@@ -156,6 +177,8 @@ f.add(settings, 'bandpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep
 
 f = gui3.addFolder('Globals')
 var maxd = 100
+f.add(others, 'autoplay').name('Play on settings change')
+f.add(others, 'autorepeat', 0, 500).step(20).name('Auto-repeat every (ms)').onChange(setRepeat)
 f.add(others, 'masterVol', 0, 1).step(0.01).name('Master volume').onChange(function (v) { fx.setVolume(v) })
 f.add(others, 'listenerX', -maxd, maxd).step(0.1).name('listener pos. X').onChange(setPos)
 f.add(others, 'listenerY', -maxd, maxd).step(0.1).name('listener pos. Y').onChange(setPos)
