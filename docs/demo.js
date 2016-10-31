@@ -190,6 +190,7 @@ f.add(settings, 'soundX', -maxd, maxd).step(0.1).name('sound pos. X').listen().o
 f.add(settings, 'soundY', -maxd, maxd).step(0.1).name('sound pos. Y').listen().onChange(go)
 f.add(settings, 'soundZ', -maxd, maxd).step(0.1).name('sound pos. Z').listen().onChange(go)
 f.add(settings, 'rolloff', 0, 10).step(0.1).name('rolloff factor').listen().onChange(go)
+f.add(settings, 'refDistance', 0, 20).step(0.5).name('rolloff start dist.').listen().onChange(go)
 function setPos() {
     fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
     go()

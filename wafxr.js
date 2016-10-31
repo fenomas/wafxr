@@ -59,6 +59,7 @@ var defaults = {
     soundY: 0,
     soundZ: 0,
     rolloff: 1,
+    refDistance: 1,
 }
 
 
