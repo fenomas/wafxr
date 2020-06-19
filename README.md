@@ -1,64 +1,63 @@
 
 # wafxr
 
-[wafxr](https://github.com/andyhall/wafxr) is a sound effect generator in the tradition of 
+`wafxr` is a sound effect tool for Web Audio,
+in the tradition of 
 [as3fxr](http://www.superflashbros.net/as3sfxr/), 
 [bfxr](http://www.bfxr.net/), 
 [jfxr](http://jfxr.frozenfractal.com/), 
-and so forth. It differs in that instead of generating sound files, it plays sounds 
-dynamically via WebAudio and [Tone.js](https://github.com/Tonejs/Tone.js/).
+and so forth. Where most such tools generate sound files, this one 
+creates sound dynamically via the 
+[wasgen](https://github.com/andyhall/wasgen) library.
 
 > [Demo](https://andyhall.github.io/wafxr/)
 
-Supports various effects, filters, 3D panning, etc.
-Internally it pools and reuses webaudio resources reasonably intelligently, 
-so it's probably about as light and performant as it can be. [(benchmark)](https://andyhall.github.io/wafxr/bench.html)
+Supports oscillators, FM synth, tremolo/vibrato, and various other 
+filters and effects. Think of this project as a convenient UI to the 
+underlying `wasgen` module (which can create arbitrarily complex 
+audio graphs, if you need something beyond what's doable with `wafxr`).
 
-
-## Installation
-
-```shell
-npm install wafxr
-```
 
 ## Usage
 
-```js
-var fx = require('wafxr')
+First open the [demo page](https://andyhall.github.io/wafxr/), and 
+play with the presets and UI until you have a sound you like.
 
-fx.play({
-    frequency: 440,
-    sweep: 1.25,
-    // ...
-})
+Then copy the sample code from the text field into your project.
+Sounds are played by [wasgen](https://github.com/andyhall/wasgen),
+so you'll need that as a dependency.
+
+```shell
+npm install --save wasgen
 ```
 
-To figure out what settings to pass in, 
-open the [demo](https://andyhall.github.io/wafxr/) page and play around. 
-Settings will appear at the bottom for copy/pasting.
-
-## API
+Sample code from the demo UI:
 
 ```js
-fx.play(settings)     // where the magic is
-
-fx.getDefaults()      // object with all supported settings
-fx.setVolume(0.5)     // master volume, 0..1   
-fx._tone              // Tone.js reference if you need it   
-
-fx.setListenerPosition(x, y, z)   // 3d sound stuff - these only
-fx.setListenerAngle(degrees)      // matter when soundX/Y/Z are set
+import Gen from 'wasgen'
+var gen = new Gen()
+gen.play([
+  /* .. sound program here .. */
+], 440, 1, gen.now(), gen.now() + 0.1)
 ```
+
 
 ## Notes
 
-WIP. Not massively tested but seems to work in sane browsers. 
+Dynamic web audio is generally supported on mobile devices, but 
+even relatively simple sounds will often have artifacts due to CPU demands.
+To realistically target mobile, you'll probably need to render 
+your sound effects ahead of time into audio files for later playback.
 
-Mobile support: Works On My Device™.
-Might skip when more effects are used, of course.
+Doing this with web audio should be straightforward, but 
+neither this project nor `wasgen` has implemented it yet.
+(PRs welcome!)
+
 
 ----
 
-## License
+## By
 
-(c) 2016 Andy Hall. MIT License
+Made with 🍺 by [andy](https://fenomas.com/).
+
+License is ISC.

@@ -1,15 +1,30 @@
 {
   "name": "wafxr",
-  "version": "0.1.2",
-  "description": "JS/webaudio sound effect generator",
-  "main": "wafxr.js",
+  "version": "0.3.0",
+  "description": "webaudio sound effects",
+  "main": "src/wafxr.js",
+  "files": [
+    "/src"
+  ],
   "scripts": {
-    "test": "webpack-dev-server --host 0.0.0.0"
+    "start": "cd docs && webpack-dev-server",
+    "build": "cd docs && webpack -p"
   },
   "author": "Andy Hall",
-  "license": "MIT",
-  "dependencies": {
-    "tone": "^0.8.0"
+  "keywords": [
+    "webaudio",
+    "sound effects",
+    "js"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andyhall/wafxr"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "wasgen": "^0.10.1"
+  },
+  "devDependencies": {
+    "tweakpane": "^1.3.4"
+  }
 }

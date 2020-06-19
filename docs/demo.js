@@ -1,221 +1,595 @@
-'use strict'
-/* globals dat */
 
-var fx = require('..')
-var presets = require('./presets')
+
 var $ = document.querySelector.bind(document)
-window.fx = fx
-window.Tone = fx._tone
+var Tweakpane = require('tweakpane')
+import './presets'
 
 
-// settings object - directly watched by dat-gui
-var baseSettings = fx.getDefaults()
-var settings = {}
-function resetSettings() {
-    for (var s in baseSettings) {
-        if (s == 'volume') continue
-        settings[s] = baseSettings[s]
-    }
-}
-settings.volume = -10
-resetSettings()
+export var pane1 = new Tweakpane({ container: $('.settings1') })
+export var pane2 = new Tweakpane({ container: $('.settings2') })
+export var params = {}
 
-
-// additional settings object for menus
-var sourceNames = ['sine', 'square', 'triangle', 'sawtooth', 'pulse', 'white noise', 'brown noise', 'pink noise']
-var others = {
-    autoplay: true,
-    autorepeat: 0,
-    masterVol: 1,
-    listenerX: 0,
-    listenerY: 0,
-    listenerZ: 1,
-    listenerAngle: 0,
-}
-
-
-
-// play a note on any settings update, with time limiter
-function go() {
-    if (!others.autoplay) return
-    var t = performance.now()
-    if (t < nextgo) return
-    nextgo = t + replayDelay
-    play()
-}
-var replayDelay = 250
-var nextgo = 0
-
-
-function play() {
-    fx.play(settings)
-    writeSettings()
-}
-
-
-// play sound on spacebar
-window.addEventListener('keydown', function (ev) {
-    if (ev.keyCode !== 32) return
-    play()
-    ev.preventDefault()
-})
-
-
-// repeat every feature
-function setRepeat(val) { }
-var nextRepeat = 0
-setInterval(function() {
-    if (others.autorepeat < 1) return
-    var now = performance.now()
-    if (now > nextRepeat) {
-        play()
-        nextRepeat = now + others.autorepeat
-    }
-}, 5)
-
-
-// top nav buttons
-$('#reset').addEventListener('click', onBut.bind(null, 'reset'))
-$('#jump').addEventListener('click', onBut.bind(null, 'jump'))
-$('#coin').addEventListener('click', onBut.bind(null, 'coin'))
-$('#expl').addEventListener('click', onBut.bind(null, 'expl'))
-$('#laser').addEventListener('click', onBut.bind(null, 'laser'))
-$('#ouch').addEventListener('click', onBut.bind(null, 'ouch'))
-$('#power').addEventListener('click', onBut.bind(null, 'power'))
-$('#ui').addEventListener('click', onBut.bind(null, 'ui'))
-
-function onBut(type) {
-    resetSettings()
-    presets.apply(settings, type)
-    play()
-}
-
-
-function writeSettings() {
-    var tmp = {}
-    for (var s in settings) {
-        var v = settings[s]
-        if (v != baseSettings[s]) {
-            if (typeof v == 'number') v = round(v)
-            tmp[s] = v
-        }
-    }
-    $('#settings').value = JSON.stringify(tmp)
-}
-function round(n) {
-    if (Math.abs(n) > 1000) return Math.round(n)
-    if (Math.abs(n) > 100) return Math.round(n * 10) / 10
-    if (Math.abs(n) > 10) return Math.round(n * 100) / 100
-    if (Math.abs(n) > 1) return Math.round(n * 1000) / 1000
-    return Math.round(n * 10000) / 10000
+export var demo = {
+    beginEditingParams,
+    finishEditingParams,
 }
 
 
 /*
- * 		Building the dat-gui
+ * 
+ *      constants
+ * 
 */
-var opts = {
-    autoPlace: false,
-    hideable: false,
-    width: 400,
+
+var types = {
+    sine: 'sine',
+    triangle: 'triangle',
+    square: 'square',
+    sawtooth: 'sawtooth',
+    'pulse (10%)': 'p10',
+    'pulse (25%)': 'p25',
+    'pulse (40%)': 'p40',
+    'harmonics(1, 0, 1)': 'w909',
+    'harmonics(1, 1, 1)': 'w999',
+    'harmonics(1, 0.6, 0.3)': 'w963',
+    'white noise': 'n0',
+    'pink noise': 'np',
+    'brown noise': 'nb',
+    'metallic noise': 'n1',
 }
-var gui1 = new dat.GUI(opts)
-var gui2 = new dat.GUI(opts)
-var gui3 = new dat.GUI(opts)
-document.querySelector('#menu1').appendChild(gui1.domElement)
-document.querySelector('#menu2').appendChild(gui2.domElement)
-document.querySelector('#menu3').appendChild(gui3.domElement)
+
+var effectTypes = {
+    lowpass: 'lowpass',
+    highpass: 'highpass',
+    bandpass: 'bandpass',
+    notch: 'notch',
+}
 
 
-// main
+
+
+
+/*
+ * 
+ * 
+ * 
+ *          UI setup
+ * 
+ * 
+ * 
+*/
+
+
 var f
+var o
 
-f = gui1.addFolder('Source')
-f.add(settings, 'volume', -50, 50).step(1).name('volume (db)').listen().onChange(go)
-f.add(settings, 'source', sourceNames).listen().onChange(go)
-f.add(settings, 'harmonics', 0, 6).step(1).listen().onChange(go)
-f.add(settings, 'pulseWidth', 0, 1).step(0.01).listen().onChange(go)
+o = params.main = {}
+f = o.folder = pane1.addFolder({ title: 'MAIN' })
+addNumeric(f, o, 'velocity', 1, 0, 1)
+addNumeric(f, o, 'frequency', 440, 100, 8000, true)
 
-f = gui1.addFolder('Envelope')
-f.add(settings, 'attack', 0, 1).step(0.001).listen().onChange(go)
-f.add(settings, 'decay', 0, 1).step(0.001).listen().onChange(go)
-f.add(settings, 'sustain', 0.01, 2).step(0.01).listen().onChange(go)
-f.add(settings, 'release', 0, 1).step(0.001).listen().onChange(go)
-f.add(settings, 'sustainLevel', 0, 1).step(0.1).name('sustain level').listen().onChange(go)
 
-f = gui1.addFolder('Pitch')
-f.add(settings, 'frequency', 100, 3000).step(1).listen().onChange(go)
-f.add(settings, 'sweep', -2, 2).step(0.01).name('　　↑ sweep').listen().onChange(go)
-f.add(settings, 'repeat', 0, 20).step(0.1).name('repeat (Hz)').listen().onChange(go)
-f.add(settings, 'jumpBy1', -1, 1).step(0.01).name('jump 1 amount').listen().onChange(go)
-f.add(settings, 'jumpAt1', 0, 1).step(0.01).name('　　↑ onset').listen().onChange(go)
-f.add(settings, 'jumpBy2', -1, 1).step(0.01).name('jump 2 amount').listen().onChange(go)
-f.add(settings, 'jumpAt2', 0, 1).step(0.01).name('　　↑ onset').listen().onChange(go)
+o = params.carrier = {}
+f = o.folder = pane1.addFolder({ title: 'CARRIER SIGNAL' })
+addPulldown(f, o, 'type', types, 'triangle')
+addNumeric(f, o, 'attack', 0.1, 0, 5, true)
+addNumeric(f, o, 'hold', 0, 0, 5, true)
+addNumeric(f, o, 'sustain', 0.8, 0, 1)
+addNumeric(f, o, 'decay', 0.1, 0, 5, true)
+addNumeric(f, o, 'duration', 0.1, 0, 5, true)
+addNumeric(f, o, 'release', 0.1, 0, 5, true)
 
-f = gui2.addFolder('Effects')
-f.add(settings, 'compressorThreshold', -100, 0).step(1).listen().onChange(go)
-f.add(settings, 'bitcrush', 0, 8).step(1).name('bitcrush bits').listen().onChange(go)
-f.add(settings, 'tremolo', 0, 1).step(0.01).name('tremolo depth').listen().onChange(go)
-f.add(settings, 'tremoloFreq', 0, 60).step(0.5).name('tremolo frequency').listen().onChange(go)
-f.add(settings, 'vibrato', 0, 1).step(0.01).name('vibrato depth').listen().onChange(go)
-f.add(settings, 'vibratoFreq', 0, 60).step(0.5).name('vibrato frequency').listen().onChange(go)
-var maxFq = settings.lowpass
-f.add(settings, 'lowpass', 10, maxFq).step(1).name('lowpass frequency').listen().onChange(go)
-f.add(settings, 'lowpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
-f.add(settings, 'highpass', 10, maxFq).step(1).name('highpass frequency').listen().onChange(go)
-f.add(settings, 'highpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
-f.add(settings, 'bandpassQ', 0.01, 10).step(0.01).name('bandpass Q').listen().onChange(go)
-f.add(settings, 'bandpass', 10, maxFq).step(1).name('　　　↑ frequency').listen().onChange(go)
-f.add(settings, 'bandpassSweep', -maxFq, maxFq).step(1).name('　　　↑ sweep').listen().onChange(go)
 
-// f = gui2.addFolder('Compression')
-// f.add(settings, 'compressorRatio', 1, 20).step(0.1).listen().onChange(go)
-// f.add(settings, 'compressorThreshold', -100, 0).step(1).listen().onChange(go)
-// f.add(settings, 'compressorRelease', 0, 1).step(0.01).listen().onChange(go)
-// f.add(settings, 'compressorAttack', 0, 0.1).step(0.001).listen().onChange(go)
-// f.add(settings, 'compressorKnee', 0, 40).step(0.1).listen().onChange(go)
+o = params.sweep = {}
+f = o.folder = pane1.addFolder({ title: 'sweep' })
+addNumeric(f, o, 'multiplier', 1, 0.1, 10, true)
+addNumeric(f, o, 'time const', 0.25, 0.01, 2, true)
+o.folder.expanded = false
 
-f = gui3.addFolder('Globals')
-var maxd = 100
-f.add(others, 'autoplay').name('Play on settings change')
-f.add(others, 'autorepeat', 0, 500).step(20).name('Auto-repeat every (ms)').onChange(setRepeat)
-f.add(others, 'masterVol', 0, 1).step(0.01).name('Master volume').onChange(function (v) { fx.setVolume(v) })
-f.add(others, 'listenerX', -maxd, maxd).step(0.1).name('listener pos. X').onChange(setPos)
-f.add(others, 'listenerY', -maxd, maxd).step(0.1).name('listener pos. Y').onChange(setPos)
-f.add(others, 'listenerZ', -maxd, maxd).step(0.1).name('listener pos. Z').onChange(setPos)
-f.add(others, 'listenerAngle', -180, 180).step(1).name('listener forward angle').onChange(setAng)
 
-f = gui3.addFolder('Spatialization')
-f.add(settings, 'soundX', -maxd, maxd).step(0.1).name('sound pos. X').listen().onChange(go)
-f.add(settings, 'soundY', -maxd, maxd).step(0.1).name('sound pos. Y').listen().onChange(go)
-f.add(settings, 'soundZ', -maxd, maxd).step(0.1).name('sound pos. Z').listen().onChange(go)
-f.add(settings, 'rolloff', 0, 10).step(0.1).name('rolloff factor').listen().onChange(go)
-f.add(settings, 'refDistance', 0, 20).step(0.5).name('rolloff start dist.').listen().onChange(go)
-function setPos() {
-    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
-    go()
+o = params.jump1 = {}
+f = o.folder = pane1.addFolder({ title: 'jump 1' })
+addNumeric(f, o, 'multiplier', 1, 0.5, 2, true)
+addNumeric(f, o, 'delay', 0.25, 0.01, 2, true)
+o.folder.expanded = false
+
+
+o = params.jump2 = {}
+f = o.folder = pane1.addFolder({ title: 'jump 2' })
+addNumeric(f, o, 'multiplier', 1, 0.5, 2, true)
+addNumeric(f, o, 'delay', 0.25, 0.01, 2, true)
+o.folder.expanded = false
+
+
+
+
+
+o = params.FM = {}
+f = o.folder = pane2.addFolder({ title: 'FM signal' })
+addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
+addNumeric(f, o, 'freq add', 0, -10, 10)
+addPulldown(f, o, 'type', types)
+addNumeric(f, o, 'gain mult', 1, 0.1, 10, true)
+addNumeric(f, o, 'attack', 0.1, 0, 5, true)
+addNumeric(f, o, 'decay', 0.1, 0, 5, true)
+addNumeric(f, o, 'sustain', 0.8, 0, 1)
+addNumeric(f, o, 'release', 0.1, 0, 5, true)
+o.folder.expanded = false
+
+
+
+o = params.tremolo = {}
+f = o.folder = pane2.addFolder({ title: 'tremolo' })
+addPulldown(f, o, 'type', types)
+addNumeric(f, o, 'depth', 0.2, 0.01, 2, true)
+addNumeric(f, o, 'frequency', 10, 0.1, 100, true)
+o.folder.expanded = false
+
+
+
+o = params.vibrato = {}
+f = o.folder = pane2.addFolder({ title: 'vibrato' })
+addPulldown(f, o, 'type', types)
+addNumeric(f, o, 'depth', 0.2, 0.01, 2, true)
+addNumeric(f, o, 'frequency', 10, 0.1, 100, true)
+o.folder.expanded = false
+
+
+
+
+
+o = params.effect1 = {}
+f = o.folder = pane2.addFolder({ title: 'effect 1' })
+addPulldown(f, o, 'type', effectTypes)
+addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep time', 0.2, 0.01, 2, true)
+addNumeric(f, o, 'Q', 1, 0.1, 10, true)
+o.folder.expanded = false
+
+
+o = params.effect2 = {}
+f = o.folder = pane2.addFolder({ title: 'effect 2' })
+addPulldown(f, o, 'type', effectTypes)
+addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep time', 0.2, 0.01, 2, true)
+addNumeric(f, o, 'Q', 1, 0.1, 10, true)
+o.folder.expanded = false
+
+
+
+o = params.crush = {}
+f = o.folder = pane2.addFolder({ title: 'crush' })
+addNumeric(f, o, 'bits', 4, 1, 15, false, 1)
+o.folder.expanded = false
+
+
+o = params.distort = {}
+f = o.folder = pane2.addFolder({ title: 'distort' })
+addPulldown(f, o, 'type', {
+    clip: 'clip',
+    boost: 'boost',
+    fold: 'fold',
+})
+addNumeric(f, o, 'argument', 5, 1, 10, false, 1)
+o.folder.expanded = false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+ * 
+ *      helpers to simplify adding params
+ * 
+*/
+
+function setKeyPrefix(obj) {
+    if (obj.keyPrefix) return
+    for (var s in params) if (params[s] === obj) obj.keyPrefix = s
 }
-function setAng() {
-    fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
-    fx.setListenerAngle(others.listenerAngle)
-    fx.setListenerAngle(others.listenerAngle)
-    go()
+
+function addPulldown(folder, obj, name, options, value) {
+    setKeyPrefix(obj)
+    var label = name
+    name = name.replace(/\s+/g, '').toLowerCase()
+    var presetKey = obj.keyPrefix + '_' + name
+    obj[name] = value || options[Object.keys(options)[0]]
+    folder.addInput(obj, name, { options, label, presetKey })
 }
-fx.setListenerPosition(others.listenerX, others.listenerY, others.listenerZ)
-fx.setListenerAngle(others.listenerAngle)
+
+function addNumeric(folder, obj, name, val, min, max, logScale, step) {
+    setKeyPrefix(obj)
+    var label = name
+    name = name.replace(/\s+/g, '').toLowerCase()
+    var presetKey = obj.keyPrefix + '_' + name
+
+    if (logScale) {
+        var absmin = 0.001
+        if (val < absmin) val = absmin
+        if (min < absmin) min = absmin
+    }
+    obj[name] = val
+    // cache-bust so it updates later
+    if (logScale) obj[name] = min
+
+    var input = folder.addInput(obj, name, { min, max, step, label, presetKey })
+
+    if (logScale) {
+        // deeply deeply hackish
+        // log-ify the slider view
+        var controller = input.controller.controller
+        controller.view_.sliderInputView_.update = function () {
+            var v = Math.log(this.value.rawValue)
+            var min = Math.log(this.minValue_)
+            var max = Math.log(this.maxValue_)
+            var p = 100 * (v - min) / (max - min)
+            this.innerElem_.style.width = p + '%'
+        }
+        // log-ify the slider inputs
+        controller.sliderIc_.ptHandler_.computePosition_ = function (x, y) {
+            var rect = this.element.getBoundingClientRect()
+            var f = x / rect.width
+            var val = Math.pow(max, f) * Math.pow(min, 1 - f)
+            var px = (val - min) / (max - min)
+            var py = y / rect.height
+            return { px, py }
+        }
+        // rework the number formatting
+        controller.view_.textInputView_.formatter_.format = function (val) {
+            return fmt(val)
+        }
+        // undo cache-bust
+        obj[name] = val
+    }
+}
+
+// update all display-only log scale parameters
+function refreshPanes() {
+    pane1.refresh()
+    pane2.refresh()
+}
+
+// params are all set up now, so refresh the log values
+refreshPanes(true)
 
 
-window.gui1 = gui1
-window.gui2 = gui2
-window.gui3 = gui3
-for (var s in gui1.__folders) gui1.__folders[s].open()
-for (var s in gui2.__folders) gui2.__folders[s].open()
-// for (var s in gui3.__folders) gui3.__folders[s].open()
-
-console.clear()
 
 
 
+
+
+
+/*
+ * 
+ *          this bit is hairy, due to how much
+ *          chrome hates pages that use webaudio
+ * 
+*/
+
+var ignoreParamEvents = false
+
+function beginEditingParams() {
+    ignoreParamEvents = true
+}
+
+function finishEditingParams() {
+    refreshPanes(true)
+    playSound()
+    ignoreParamEvents = false
+}
+
+
+// general event for all param changes
+function onParamChange() {
+    if (ignoreParamEvents) return
+    refreshPanes(false)
+    playSound(params)
+}
+pane1.on('change', onParamChange)
+pane2.on('change', onParamChange)
+
+
+// also play sound on keypresses
+window.onkeydown = (ev) => {
+    if (ev.metaKey) return
+    if (ev.key === 'Tab') return
+    if (ev.key === 'Shift') return
+    var focused = document.activeElement
+    if (focused && /text/.test(focused.type)) return
+
+    var freq = params.main.frequency
+    if (ev.key === ' ') {
+        // don't scroll on space
+        ev.preventDefault()
+    } else {
+        var chars = 'qwertyuiopasdfghjklzxcvbnm'
+        var i = chars.indexOf(ev.key.toLowerCase())
+        if (i < 0) return
+        var scale = [0, 2, 4, 5, 7, 9, 11]
+        var note = 55
+        while (i >= scale.length) {
+            note += 12
+            i -= scale.length
+        }
+        note += scale[i]
+        freq = 440 * Math.pow(2, (note - 69) / 12)
+    }
+
+    // the following implicitly triggers a sound
+    beginEditingParams()
+    params.main.frequency = freq
+    finishEditingParams()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+ * 
+ * 
+ * 
+ *          Program creation and sound playback
+ * 
+ * 
+ * 
+*/
+
+
+// import Generator from '../../wasgen'
+import Generator from 'wasgen'
+
+var nextSoundCutoff = -1000
+var gen, ctx
+
+function playSound() {
+    $('.hint').style.display = 'none'
+
+    if (!gen) {
+        ctx = new AudioContext
+        var dest = ctx.createGain()
+        dest.connect(ctx.destination)
+        gen = new Generator(ctx, dest)
+        window.gen = gen // so that playback code will run in console
+        window.ctx = ctx
+    }
+
+    // overall play duration
+    var duration = params.carrier.attack
+        + params.carrier.hold
+        + params.carrier.decay
+        + params.carrier.duration
+
+    // debounce
+    var t = performance.now()
+    if (t < nextSoundCutoff) return
+    var wait = Math.min(Math.max(0.25, duration / 2), 1.5)
+    nextSoundCutoff = t + wait * 1000
+
+    // play the sound
+    if (ctx.state !== 'running') ctx.resume()
+
+    var program = [{
+        type: params.carrier.type,
+        freq: [],
+        gain: [{
+            a: params.carrier.attack,
+            h: params.carrier.hold,
+            d: params.carrier.decay,
+            s: params.carrier.sustain,
+            r: params.carrier.release,
+        }],
+    }]
+
+    if (params.jump1.folder.expanded) {
+        program[0].freq.push({
+            w: params.jump1.delay,
+            a: 0,
+            t: params.jump1.multiplier,
+        })
+    }
+
+    if (params.jump2.folder.expanded) {
+        program[0].freq.push({
+            w: params.jump2.delay,
+            a: 0,
+            t: params.jump2.multiplier,
+        })
+    }
+
+    if (params.sweep.folder.expanded) {
+        program[0].freq.push({
+            p: params.sweep.multiplier,
+            q: params.sweep.timeconst,
+        })
+    }
+
+
+    if (params.tremolo.folder.expanded) {
+        program[0].freq.push({
+            type: params.tremolo.type,
+            freq: params.tremolo.frequency,
+            gain: params.tremolo.depth,
+        })
+    }
+
+    if (params.vibrato.folder.expanded) {
+        program[0].gain.push({
+            type: params.vibrato.type,
+            freq: params.vibrato.frequency,
+            gain: {
+                t: params.vibrato.depth,
+                r: params.carrier.release,
+                z: 0,
+            },
+        })
+    }
+
+    if (params.FM.folder.expanded) {
+        program[0].freq.push({
+            type: params.FM.type,
+            freq: {
+                t: params.FM.freqmult,
+                f: params.FM.freqadd,
+            },
+            gain: {
+                t: params.FM.gainmult,
+                a: params.FM.attack,
+                d: params.FM.decay,
+                s: params.FM.sustain,
+                r: params.FM.release,
+            },
+        })
+    }
+
+    if (params.crush.folder.expanded) {
+        program.push({
+            type: `shape-crush-${params.crush.bits}`,
+        })
+    }
+
+    if (params.distort.folder.expanded) {
+        program.push({
+            type: `shape-${params.distort.type}-${params.distort.argument}`,
+        })
+    }
+
+    if (params.effect1.folder.expanded) {
+        program.push({
+            type: params.effect1.type,
+            freq: {
+                t: params.effect1.freqmult,
+                p: params.effect1.sweep,
+                q: params.effect1.sweeptime,
+            },
+            Q: params.effect1.q,
+        })
+    }
+    if (params.effect2.folder.expanded) {
+        program.push({
+            type: params.effect2.type,
+            freq: {
+                t: params.effect2.freqmult,
+                p: params.effect2.sweep,
+                q: params.effect2.sweeptime,
+            },
+            Q: params.effect2.q,
+        })
+    }
+
+    program.forEach(prog => formatProgramObject(prog))
+
+    var freq = fmt(params.main.frequency)
+    var vel = fmt(params.main.velocity)
+    var dur = fmt(duration)
+    var now = gen.now() + 0.15
+
+    gen.play(program, freq, vel, now, now + dur)
+    writeCode(program, freq, vel, dur)
+}
+
+
+function fmt(num) {
+    if (num < 0.002) return 0
+    if (num > 10) return Math.round(num)
+    if (num > 1) return Math.round(num * 10) / 10
+    if (num > 0.1) return Math.round(num * 100) / 100
+    return Math.round(num * 1000) / 1000
+}
+
+function formatProgramObject(obj) {
+    Object.keys(obj).forEach(s => {
+        if (Array.isArray(obj[s])) {
+            if (obj[s].length === 1) obj[s] = obj[s][0]
+        }
+        if (typeof obj[s] === 'number') {
+            obj[s] = fmt(obj[s])
+        }
+        if (typeof obj[s] === 'object') {
+            if (Object.keys(obj[s]).length === 0) {
+                delete obj[s]
+            } else {
+                formatProgramObject(obj[s])
+            }
+        }
+    })
+}
+
+
+
+
+
+
+
+
+/*
+ * 
+ * 
+ * 
+ *          writing out playback code
+ * 
+ * 
+ * 
+*/
+
+var textfield = $('.code')
+
+function writeCode(program, freq, vel, dur) {
+    var progstrs = program.map(o => stringify(o))
+
+    textfield.value = ``
+    textfield.value += `// import Gen from 'wasgen'\n`
+    textfield.value += `// var gen = new Gen()\n`
+    textfield.value += `gen.play([\n`
+    progstrs.forEach(str => { textfield.value += `  ${str},\n` })
+    textfield.value += `], ${freq}, ${vel}, gen.now(), gen.now() + ${dur})\n`
+}
+
+function stringify(obj) {
+    roundNums(obj)
+    var s = JSON.stringify(obj)
+    s = s.replace(/"([^"]*)":/g, '$1:')
+    s = s.replace(/,gain/g, ', gain')
+    s = s.replace(/,freq/g, ', freq')
+    return s
+}
+
+function roundNums(obj) {
+    for (var key in obj) {
+        if (typeof obj[key] === 'object') roundNums(obj[key])
+        if (typeof obj[key] === 'number') obj[key] = Math.round(obj[key] * 1000) / 1000
+    }
+}
 
 
 

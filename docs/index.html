@@ -8,102 +8,133 @@
 	<style type="text/css">
 		body {
 			font: 300 18px/24px Meiryo, Helvetica, sans-serif;
-			padding: 25px;
-			padding-right: 0;
-			margin: 0;
+			padding: 20px;
 		}
-		
-		body > div {
-			margin: 15px 0;
+
+		.title {
+			margin: 15px 0 5px 40px;
+			font: 800 56px monospace;
 		}
-		
-		#title {
-			margin: 15px 60px;
-			font: 800 50px monospace;
+
+		.title a {
+			text-decoration: none;
+			color: hsl(150, 66%, 35%);
 		}
-		
-		.menu {
-			margin: 0 15px 15px 0;
-			float: left;
+
+		.title,
+		.hint {
+			display: inline-block;
 		}
-		
-		#output {
-			clear: left;
-			padding-top: 10px;
+
+		.presets {
+			margin: 10px 0;
 		}
-		
-		#settings {
-			width: 400px;
-		}
-		
-		#nav {
-			padding: 3px 0;
-		}
-		
-		button {
+
+		.presets button {
 			font: inherit;
 			padding: 6px 14px;
 			margin: 4px 7px;
-			background-color: whitesmoke;
+			background-color: #eee;
 			border: 1px solid gray;
 			border-radius: 5px;
 		}
-		
-		div.dg {
-			font: 300 13px Meiryo, Helvetica, sans-serif;
+
+		.settings {
+			margin: 10px 5px 20px 20px;
+			width: 350px;
+			vertical-align: top;
+			float: left;
 		}
-		
-		.dg .close-button {
-			display: none;
+
+		.output {
+			margin: 20px;
+			width: 400px;
+			clear: left;
 		}
-		
+
+		.code {
+			width: 400px;
+			font: normal 12px monospace;
+		}
+
 		hr {
-			margin: 20px 0;
+			margin-top: 40px;
 		}
-		
-		a {
-			text-decoration: none;
-			color: seagreen;
+
+		/* settings GUI styling */
+
+		.tp-lblv_v {
+			width: 250px !important;
+		}
+
+		:root {
+			--tp-base-background-color: hsl(0, 0%, 10%);
+			--tp-base-shadow-color: hsla(0, 0%, 0%, 0.2);
+
+			--tp-folder-foreground-color: hsl(150, 66%, 40%);
+			--tp-folder-background-color: hsl(0, 0%, 20%);
+
+			--tp-input-foreground-color: hsl(150, 66%, 50%);
+			--tp-input-background-color: hsl(0, 0%, 20%);
+			--tp-input-background-color-active: hsl(0, 0%, 25%);
+			--tp-input-background-color-focus: hsl(0, 0%, 20%);
+			--tp-input-background-color-hover: hsl(0, 0%, 15%);
+
+			--tp-button-background-color: hsl(150, 66%, 35%);
+			--tp-button-background-color-active: hsl(150, 66%, 50%);
+			--tp-button-background-color-focus: hsl(150, 66%, 45%);
+			--tp-button-background-color-hover: hsl(150, 66%, 40%);
+
+
+			--tp-monitor-background-color: hsl(0, 0%, 8%);
+			--tp-monitor-foreground-color: hsl(0, 0%, 48%);
+
+			--tp-label-foreground-color: hsl(0, 0%, 90%);
+			--tp-separator-color: hsl(0, 0%, 10%);
 		}
 	</style>
 </head>
 
 <body>
-	<div id="title">
-		<a href="https://github.com/andyhall/wafxr">wafxr.</a>
+
+	<div class="header">
+		<div class="title">
+			<a href="https://github.com/andyhall/wafxr">wafxr.</a>
+		</div>
+		<div class="hint">
+			Choose a preset, hit a key, or twiddle a parameter to get going.
+		</div>
 	</div>
 
-	<div id="nav">
-		<button id="reset">Reset</button>
-		<button id="jump">Jump</button>
-		<button id="coin">Coin</button>
-		<button id="expl">Explosion</button>
-		<button id="laser">Laser</button>
-		<button id="ouch">Ouch</button>
-		<button id="power">Powerup</button>
-		<button id="ui">UI</button>
+	<div class="presets">
+		<button class="reset">Reset</button>
+		<button class="jump">Jump</button>
+		<button class="coin">Coin</button>
+		<button class="expl">Explosion</button>
+		<button class="laser">Laser</button>
+		<button class="ouch">Ouch</button>
+		<button class="power">Powerup</button>
+		<button class="ui">UI</button>
 	</div>
 
-	<div id="menus">
-		<div id="menu1" class="menu"></div>
-		<div id="menu2" class="menu"></div>
-		<div id="menu3" class="menu"></div>
+	<div class="settings settings1"></div>
+	<div class="settings settings2"></div>
+
+
+	<div class="output">
+		Playback code:<br>
+		<textarea class="code" rows="6" wrap="off"></textarea>
 	</div>
 
-	<div id="output">
-		Settings:<br>
-		<textarea id="settings" rows="3"></textarea>
-	</div>
 
 	<hr>
 
-	<address id="footer">
-		Made by <a href="https://twitter.com/fenomas">@fenomas</a>
-		 | <a href="https://github.com/andyhall/wafxr">source</a>
-		 | <a href="bench.html">benchmark</a>
+	<address class="footer">
+		Made by <a href="https://fenomas.com">fenomas</a>
+		| <a href="https://github.com/andyhall/wafxr">source</a>
+		| <a href="https://github.com/andyhall/wasgen">sound generator</a>
 	</address>
 
-	<script src="dat.gui.min.js"></script>
 	<script src="bundle.js"></script>
 </body>
 
