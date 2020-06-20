@@ -376,7 +376,7 @@ function playSound() {
     $('.hint').style.display = 'none'
 
     if (!gen) {
-        ctx = new AudioContext
+        ctx = new (window.AudioContext || window.webkitAudioContext)()
         var dest = ctx.createGain()
         dest.connect(ctx.destination)
         gen = new Generator(ctx, dest)

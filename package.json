@@ -22,7 +22,7 @@
     "url": "https://github.com/andyhall/wafxr"
   },
   "dependencies": {
-    "wasgen": "^0.10.1"
+    "wasgen": "^0.11.0"
   },
   "devDependencies": {
     "tweakpane": "^1.3.4"
