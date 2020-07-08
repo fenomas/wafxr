@@ -1,57 +1,53 @@
 
 # wafxr
 
-`wafxr` is a sound effect tool for Web Audio,
-in the tradition of 
+> [Live demo](https://andyhall.github.io/wafxr/)
+
+`wafxr` is a sound effect generator in the tradition of 
 [as3fxr](http://www.superflashbros.net/as3sfxr/), 
 [bfxr](http://www.bfxr.net/), 
-[jfxr](http://jfxr.frozenfractal.com/), 
-and so forth. Where most such tools generate sound files, this one 
-creates sound dynamically via the 
+[jfxr](http://jfxr.frozenfractal.com/), and so on. 
+Whereas most such tools generate static files, 
+this one plays sounds dynamically via WebAudio and the 
 [wasgen](https://github.com/andyhall/wasgen) library.
 
-> [Demo](https://andyhall.github.io/wafxr/)
 
 Supports oscillators, FM synth, tremolo/vibrato, and various other 
-filters and effects. Think of this project as a convenient UI to the 
-underlying `wasgen` module (which can create arbitrarily complex 
-audio graphs, if you need something beyond what's doable with `wafxr`).
+filters and effects. Use this project as a convenient front-end for the
+underlying `wasgen` library (which can create arbitrarily complex 
+audio graphs, if write your own effect programs).
 
 
 ## Usage
 
-First open the [demo page](https://andyhall.github.io/wafxr/), and 
-play with the presets and UI until you have a sound you like.
-
-Then copy the sample code from the text field into your project.
-Sounds are played by [wasgen](https://github.com/andyhall/wasgen),
-so you'll need that as a dependency.
+Open the [demo](https://andyhall.github.io/wafxr/) and 
+twiddle the UI until you have a sound you like. 
+Then copy the `playback code` into your project, 
+add [wasgen](https://github.com/andyhall/wasgen) as a dependency, 
+and off you go.
 
 ```shell
 npm install --save wasgen
 ```
 
-Sample code from the demo UI:
-
 ```js
 import Gen from 'wasgen'
 var gen = new Gen()
 gen.play([
-  /* .. sound program here .. */
+  /* .. sound program from the demo page .. */
 ], 440, 1, gen.now(), gen.now() + 0.1)
 ```
 
+<br>
 
-## Notes
-
-Dynamic web audio is generally supported on mobile devices, but 
-even relatively simple sounds will often have artifacts due to CPU demands.
-To realistically target mobile, you'll probably need to render 
-your sound effects ahead of time into audio files for later playback.
-
-Doing this with web audio should be straightforward, but 
-neither this project nor `wasgen` has implemented it yet.
-(PRs welcome!)
+## Note on mobile support
+  
+Dynamic web audio is generally well-supported on mobile, 
+but it's CPU intensive so you may hear pops or glitches.
+Realistically, for mobile it's probably better to pre-render your sound 
+into an audio buffer for later playback. This should be 
+straightforward to do by giving `wasgen` an offline AudioContext, 
+but there's no automatic API for it yet.
 
 
 ----
