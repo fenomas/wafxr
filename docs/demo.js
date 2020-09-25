@@ -78,27 +78,31 @@ addNumeric(f, o, 'sustain', 0.8, 0, 1)
 addNumeric(f, o, 'decay', 0.1, 0, 5, true)
 addNumeric(f, o, 'duration', 0.1, 0, 5, true)
 addNumeric(f, o, 'release', 0.1, 0, 5, true)
+addNumeric(f, o, 'crush', 0, 0, 20, false, 1)
 
 
-o = params.sweep = {}
-f = o.folder = pane1.addFolder({ title: 'sweep' })
-addNumeric(f, o, 'multiplier', 1, 0.1, 10, true)
-addNumeric(f, o, 'time const', 0.25, 0.01, 2, true)
+o = params.mods1 = {}
+f = o.folder = pane1.addFolder({ title: 'freq mods 1' })
+addNumeric(f, o, 'delay', 0.1, 0.01, 2, true)
+addNumeric(f, o, 'jump mult', 1, 0.5, 2, true)
+addNumeric(f, o, 'jump add', 0, -200, 200)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true)
+addNumeric(f, o, 'repeat', 1, 1, 20, false, 1)
 o.folder.expanded = false
 
 
-o = params.jump1 = {}
-f = o.folder = pane1.addFolder({ title: 'jump 1' })
-addNumeric(f, o, 'multiplier', 1, 0.5, 2, true)
-addNumeric(f, o, 'delay', 0.25, 0.01, 2, true)
+
+o = params.mods2 = {}
+f = o.folder = pane1.addFolder({ title: 'freq mods 2' })
+addNumeric(f, o, 'delay', 0.1, 0.01, 2, true)
+addNumeric(f, o, 'jump mult', 1, 0.5, 2, true)
+addNumeric(f, o, 'jump add', 0, -200, 200)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
+addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true)
+addNumeric(f, o, 'repeat', 1, 1, 20, false, 1)
 o.folder.expanded = false
 
-
-o = params.jump2 = {}
-f = o.folder = pane1.addFolder({ title: 'jump 2' })
-addNumeric(f, o, 'multiplier', 1, 0.5, 2, true)
-addNumeric(f, o, 'delay', 0.25, 0.01, 2, true)
-o.folder.expanded = false
 
 
 
@@ -159,11 +163,6 @@ o.folder.expanded = false
 
 
 
-o = params.crush = {}
-f = o.folder = pane2.addFolder({ title: 'crush' })
-addNumeric(f, o, 'bits', 4, 1, 15, false, 1)
-o.folder.expanded = false
-
 
 o = params.distort = {}
 f = o.folder = pane2.addFolder({ title: 'distort' })
@@ -171,6 +170,8 @@ addPulldown(f, o, 'type', {
     clip: 'clip',
     boost: 'boost',
     fold: 'fold',
+    thin: 'thin',
+    fat: 'fat',
 })
 addNumeric(f, o, 'argument', 5, 1, 10, false, 1)
 o.folder.expanded = false
@@ -323,7 +324,7 @@ window.onkeydown = (ev) => {
         // don't scroll on space
         ev.preventDefault()
     } else {
-        var chars = 'qwertyuiopasdfghjklzxcvbnm'
+        var chars = 'zxcvbnmasdfghjklqwertyuiop'
         var i = chars.indexOf(ev.key.toLowerCase())
         if (i < 0) return
         var scale = [0, 2, 4, 5, 7, 9, 11]
@@ -411,28 +412,36 @@ function playSound() {
         }],
     }]
 
-    if (params.jump1.folder.expanded) {
+    if (params.carrier.crush > 0) {
+        program[0].crush = params.carrier.crush | 0
+    }
+
+
+    if (params.mods1.folder.expanded) {
         program[0].freq.push({
-            w: params.jump1.delay,
+            w: params.mods1.delay,
+            t: params.mods1.jumpmult,
+            f: params.mods1.jumpadd,
             a: 0,
-            t: params.jump1.multiplier,
+            p: params.mods1.sweep,
+            q: params.mods1.sweeptime,
+            x: params.mods1.repeat,
         })
     }
 
-    if (params.jump2.folder.expanded) {
+
+    if (params.mods2.folder.expanded) {
         program[0].freq.push({
-            w: params.jump2.delay,
+            w: params.mods2.delay,
+            t: params.mods2.jumpmult,
+            f: params.mods2.jumpadd,
             a: 0,
-            t: params.jump2.multiplier,
+            p: params.mods2.sweep,
+            q: params.mods2.sweeptime,
+            x: params.mods2.repeat,
         })
     }
 
-    if (params.sweep.folder.expanded) {
-        program[0].freq.push({
-            p: params.sweep.multiplier,
-            q: params.sweep.timeconst,
-        })
-    }
 
 
     if (params.tremolo.folder.expanded) {
@@ -469,12 +478,6 @@ function playSound() {
                 s: params.FM.sustain,
                 r: params.FM.release,
             },
-        })
-    }
-
-    if (params.crush.folder.expanded) {
-        program.push({
-            type: `shape-crush-${params.crush.bits}`,
         })
     }
 
@@ -520,11 +523,13 @@ function playSound() {
 
 
 function fmt(num) {
+    var sign = (num < 0) ? -1 : 1
+    num = Math.abs(num)
     if (num < 0.002) return 0
-    if (num > 10) return Math.round(num)
-    if (num > 1) return Math.round(num * 10) / 10
-    if (num > 0.1) return Math.round(num * 100) / 100
-    return Math.round(num * 1000) / 1000
+    if (num > 10) return sign * Math.round(num)
+    if (num > 1) return sign * Math.round(num * 10) / 10
+    if (num > 0.1) return sign * Math.round(num * 100) / 100
+    return sign * Math.round(num * 1000) / 1000
 }
 
 function formatProgramObject(obj) {
