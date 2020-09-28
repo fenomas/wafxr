@@ -66,7 +66,7 @@ var o
 o = params.main = {}
 f = o.folder = pane1.addFolder({ title: 'MAIN' })
 addNumeric(f, o, 'velocity', 1, 0, 1)
-addNumeric(f, o, 'frequency', 440, 100, 8000, true)
+addNumeric(f, o, 'frequency', 440, 100, 8000, true, 1)
 
 
 o = params.carrier = {}
@@ -74,7 +74,7 @@ f = o.folder = pane1.addFolder({ title: 'CARRIER SIGNAL' })
 addPulldown(f, o, 'type', types, 'triangle')
 addNumeric(f, o, 'attack', 0.1, 0, 5, true)
 addNumeric(f, o, 'hold', 0, 0, 5, true)
-addNumeric(f, o, 'sustain', 0.8, 0, 1)
+addNumeric(f, o, 'sustain', 0.8, 0, 1, false)
 addNumeric(f, o, 'decay', 0.1, 0, 5, true)
 addNumeric(f, o, 'duration', 0.1, 0, 5, true)
 addNumeric(f, o, 'release', 0.1, 0, 5, true)
@@ -83,11 +83,11 @@ addNumeric(f, o, 'crush', 0, 0, 20, false, 1)
 
 o = params.mods1 = {}
 f = o.folder = pane1.addFolder({ title: 'freq mods 1' })
-addNumeric(f, o, 'delay', 0.1, 0.01, 2, true)
-addNumeric(f, o, 'jump mult', 1, 0.5, 2, true)
-addNumeric(f, o, 'jump add', 0, -200, 200)
-addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
-addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true)
+addNumeric(f, o, 'delay', 0.1, 0.01, 2, true, 0.01)
+addNumeric(f, o, 'jump mult', 1, 0.5, 2, true, 0.05)
+addNumeric(f, o, 'jump add', 0, -200, 200, false, 10)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true, 0.05)
+addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true, 0.01)
 addNumeric(f, o, 'repeat', 1, 1, 20, false, 1)
 o.folder.expanded = false
 
@@ -95,11 +95,11 @@ o.folder.expanded = false
 
 o = params.mods2 = {}
 f = o.folder = pane1.addFolder({ title: 'freq mods 2' })
-addNumeric(f, o, 'delay', 0.1, 0.01, 2, true)
-addNumeric(f, o, 'jump mult', 1, 0.5, 2, true)
-addNumeric(f, o, 'jump add', 0, -200, 200)
-addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
-addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true)
+addNumeric(f, o, 'delay', 0.1, 0.01, 2, true, 0.01)
+addNumeric(f, o, 'jump mult', 1, 0.5, 2, true, 0.05)
+addNumeric(f, o, 'jump add', 0, -200, 200, false, 10)
+addNumeric(f, o, 'sweep', 1, 0.1, 10, true, 0.05)
+addNumeric(f, o, 'sweep time', 0.25, 0.01, 2, true, 0.01)
 addNumeric(f, o, 'repeat', 1, 1, 20, false, 1)
 o.folder.expanded = false
 
@@ -111,7 +111,7 @@ o.folder.expanded = false
 o = params.FM = {}
 f = o.folder = pane2.addFolder({ title: 'FM signal' })
 addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
-addNumeric(f, o, 'freq add', 0, -10, 10)
+addNumeric(f, o, 'freq add', 0, -10, 10, false, 0.1)
 addPulldown(f, o, 'type', types)
 addNumeric(f, o, 'gain mult', 1, 0.1, 10, true)
 addNumeric(f, o, 'attack', 0.1, 0, 5, true)
@@ -148,7 +148,7 @@ addPulldown(f, o, 'type', effectTypes)
 addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
 addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
 addNumeric(f, o, 'sweep time', 0.2, 0.01, 2, true)
-addNumeric(f, o, 'Q', 1, 0.1, 10, true)
+addNumeric(f, o, 'Q', 1, 0.2, 10, true, 0.1)
 o.folder.expanded = false
 
 
@@ -158,7 +158,7 @@ addPulldown(f, o, 'type', effectTypes)
 addNumeric(f, o, 'freq mult', 1, 0.1, 10, true)
 addNumeric(f, o, 'sweep', 1, 0.1, 10, true)
 addNumeric(f, o, 'sweep time', 0.2, 0.01, 2, true)
-addNumeric(f, o, 'Q', 1, 0.1, 10, true)
+addNumeric(f, o, 'Q', 1, 0.2, 10, true, 0.1)
 o.folder.expanded = false
 
 
@@ -229,8 +229,12 @@ function addNumeric(folder, obj, name, val, min, max, logScale, step) {
         var absmin = 0.001
         if (val < absmin) val = absmin
         if (min < absmin) min = absmin
+        step = step || min
+    } else {
+        step = step || min || 0.01
     }
     obj[name] = val
+
     // cache-bust so it updates later
     if (logScale) obj[name] = min
 
