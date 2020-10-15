@@ -431,10 +431,6 @@ function playSound() {
         }],
     }]
 
-    if (params.carrier.crush > 0) {
-        program[0].effect = 'crush-' + (params.carrier.crush | 0)
-    }
-
 
     if (params.distort1.folder.expanded) {
         var d1 = params.distort1.type

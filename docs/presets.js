@@ -212,27 +212,24 @@ function laserPreset() {
 
 function ouchPreset() {
     var folders = []
-    var frequency = rlog(400, 1400)
+    var frequency = rand(400, 1000)
     params.carrier.type = choose('n0', 'np', 'nb')
     params.carrier.duration = rlog(0.03, 0.06)
     params.carrier.attack = rlog(0.01, 0.05)
     params.carrier.sustain = rand(0.2, 0.6)
     params.carrier.release = rlog(0.01, 0.1)
     params.carrier.decay = rlog(0.01, 0.1)
-    if (rint(0, 2)) params.carrier.crush = rint(2, 7)
-    // sweeps and jumps and effects
-    if (/^n/.test(params.carrier.type)) {
-        folders.push('effect1')
-        params.effect1.type = 'bandpass'
-        params.effect1.freqmult = rand(1, 2)
-        params.effect1.sweep = rand(0.1, 0.5)
-        params.effect1.sweeptime = rlog(0.01, 0.05)
-        params.effect1.q = rand(0.5, 5)
-    } else {
-        folders.push('mods1')
-        params.mods1.sweep = rand(0.25, 0.75)
-        params.mods1.sweeptime = rand(0.02, 0.08)
+    if (rint(0, 3)) {
+        folders.push('distort1')
+        params.distort1.type = choose('crush', 'shape-boost')
+        params.distort1.argument = rint(2, 7)
     }
+    folders.push('effect1')
+    params.effect1.type = 'bandpass'
+    params.effect1.freqmult = rand(1, 2)
+    params.effect1.sweep = rand(0.25, 0.8)
+    params.effect1.sweeptime = rlog(0.01, 0.05)
+    params.effect1.q = rand(0.5, 3)
     return { folders, frequency }
 }
 
