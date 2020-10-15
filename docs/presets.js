@@ -5,9 +5,8 @@ var $ = document.querySelector.bind(document)
 
 function rand(a, b) { return a + (Math.random() * (b - a)) }
 function rint(a, b) { return Math.floor(rand(a, b)) }
-function rarr(arr) { return arr[rint(0, arr.length)] }
 function rlog(a, b) { return Math.pow(2, rand(Math.log2(a), Math.log2(b))) }
-
+function choose() { return (arguments[(Math.random() * arguments.length) | 0]) }
 
 
 
@@ -95,7 +94,7 @@ function resetPreset() {
 function jumpPreset() {
     var folders = []
     var frequency = rlog(200, 800)
-    params.carrier.type = rarr(['triangle', 'w909', 'w999'])
+    params.carrier.type = choose('triangle', 'w909', 'w999')
     params.carrier.duration = rand(0.05, 0.2)
     params.carrier.sustain = rand(0.2, 0.7)
     params.carrier.release = rand(0.05, 0.15)
@@ -107,7 +106,7 @@ function jumpPreset() {
     if (rint(0, 2)) {
         folders.push('mods2')
         params.mods2.delay = rand(0.03, 0.1)
-        params.mods2.jumpmult = 1 + rand(0.1, 0.3) * rarr([1, -1])
+        params.mods2.jumpmult = 1 + rand(0.1, 0.3) * choose(1, -1)
     }
     return { folders, frequency }
 }
@@ -120,7 +119,7 @@ function jumpPreset() {
 function coinPreset() {
     var folders = []
     var frequency = rlog(120, 1600)
-    params.carrier.type = rarr(['sine', 'triangle', 'w909', 'w999'])
+    params.carrier.type = choose('sine', 'triangle', 'w909', 'w999')
     params.carrier.duration = rand(0.05, 0.1)
     params.carrier.sustain = rand(0.1, 0.5)
     params.carrier.release = rand(0.05, 0.25)
@@ -150,11 +149,13 @@ function explosionPreset() {
     params.carrier.duration = rand(0.1, 0.2)
     params.carrier.sustain = rand(0.1, 0.5)
     params.carrier.release = rand(0.2, 0.3)
-    params.carrier.crush = rint(1, 9)
+    folders.push('distort1')
+    params.distort1.type = choose('crush', 'shape-boost')
+    params.distort1.argument = rint(1, 9)
     if (rint(0, 2)) {
-        params.carrier.type = rarr(['sine', 'triangle'])
+        params.carrier.type = choose('sine', 'triangle')
         folders.push('FM')
-        params.FM.type = rarr(['n0', 'np', 'nb'])
+        params.FM.type = choose('n0', 'np', 'nb')
         params.FM.multiplier = rand(3, 10)
         params.FM.release = 5
         // sweeps and jumps and effects
@@ -162,9 +163,9 @@ function explosionPreset() {
         params.mods1.sweep = rand(0.2, 0.9)
         params.mods1.sweeptime = params.carrier.release
     } else {
-        params.carrier.type = rarr(['n0', 'np', 'nb'])
+        params.carrier.type = choose('n0', 'np', 'nb')
         folders.push('effect1')
-        params.effect1.type = rarr(['bandpass', 'lowpass'])
+        params.effect1.type = choose('bandpass', 'lowpass')
         var low = /low/.test(params.effect1.type)
         params.effect1.freqmult = low ? rand(3, 8) : rand(1, 1.5)
         params.effect1.sweep = rand(0.1, 0.5)
@@ -188,14 +189,14 @@ function explosionPreset() {
 
 function laserPreset() {
     var folders = []
-    var frequency = rlog(500, 2000)
-    params.carrier.type = rarr(['sine', 'triangle', 'sawtooth', 'p10', 'p25', 'p40'])
+    var frequency = rlog(300, 1500)
+    params.carrier.type = choose('sine', 'triangle', 'sawtooth', 'p25', 'p40')
     params.carrier.duration = rand(0.05, 0.15)
     params.carrier.sustain = rand(0.2, 0.6)
     params.carrier.release = rand(0.02, 0.1)
     // sweeps and jumps and effects
     folders.push('mods1')
-    params.mods1.sweep = rand(0.1, 0.85)
+    params.mods1.sweep = rlog(0.25, 4)
     params.mods1.sweeptime = rand(0.02, 0.08)
     if (rint(0, 2)) {
         folders.push('vibrato')
@@ -212,8 +213,9 @@ function laserPreset() {
 function ouchPreset() {
     var folders = []
     var frequency = rlog(400, 1400)
-    params.carrier.type = rarr(['square', 'sawtooth', 'p25', 'n0', 'np', 'nb'])
+    params.carrier.type = choose('n0', 'np', 'nb')
     params.carrier.duration = rlog(0.03, 0.06)
+    params.carrier.attack = rlog(0.01, 0.05)
     params.carrier.sustain = rand(0.2, 0.6)
     params.carrier.release = rlog(0.01, 0.1)
     params.carrier.decay = rlog(0.01, 0.1)
@@ -243,7 +245,7 @@ function ouchPreset() {
 function powerPreset() {
     var folders = []
     var frequency = rlog(400, 1000)
-    params.carrier.type = rarr(['sine', 'square', 'triangle', 'sawtooth', 'p25', 'w909'])
+    params.carrier.type = choose('sine', 'square', 'triangle', 'sawtooth', 'w909')
     params.carrier.duration = rand(0.05, 0.1)
     params.carrier.sustain = rand(0.2, 0.6)
     params.carrier.release = rand(0.05, 0.2)
@@ -275,7 +277,7 @@ function powerPreset() {
 function uiPreset() {
     var folders = []
     var frequency = rlog(150, 3000)
-    params.carrier.type = rarr(['sine', 'square', 'triangle', 'sawtooth', 'p25', 'w909'])
+    params.carrier.type = choose('sine', 'square', 'triangle', 'sawtooth', 'p25', 'w909', 'n0', 'n1')
     params.carrier.duration = rand(0.01, 0.05)
     params.carrier.attack = rand(0.01, 0.05)
     params.carrier.sustain = rand(0.2, 0.6)

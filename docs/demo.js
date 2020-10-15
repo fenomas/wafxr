@@ -78,7 +78,21 @@ addNumeric(f, o, 'sustain', 0.8, 0, 1, false)
 addNumeric(f, o, 'decay', 0.1, 0, 5, true)
 addNumeric(f, o, 'duration', 0.1, 0, 5, true)
 addNumeric(f, o, 'release', 0.1, 0, 5, true)
-addNumeric(f, o, 'crush', 0, 0, 20, false, 1)
+
+
+o = params.distort1 = {}
+f = o.folder = pane1.addFolder({ title: 'carrier distortion' })
+addPulldown(f, o, 'type', {
+    bitcrush: 'crush',
+    clip: 'shape-clip',
+    boost: 'shape-boost',
+    fold: 'shape-fold',
+    thin: 'shape-thin',
+    fat: 'shape-fat',
+})
+addNumeric(f, o, 'argument', 5, 1, 20, false, 1)
+o.folder.expanded = false
+
 
 
 o = params.mods1 = {}
@@ -125,7 +139,7 @@ o.folder.expanded = false
 o = params.tremolo = {}
 f = o.folder = pane2.addFolder({ title: 'tremolo' })
 addPulldown(f, o, 'type', types)
-addNumeric(f, o, 'depth', 0.2, 0.01, 2, true)
+addNumeric(f, o, 'depth', 0.05, 0.01, 2, true)
 addNumeric(f, o, 'frequency', 10, 0.1, 100, true)
 o.folder.expanded = false
 
@@ -164,16 +178,17 @@ o.folder.expanded = false
 
 
 
-o = params.distort = {}
-f = o.folder = pane2.addFolder({ title: 'distort' })
+o = params.distort2 = {}
+f = o.folder = pane2.addFolder({ title: 'post distortion' })
 addPulldown(f, o, 'type', {
-    clip: 'clip',
-    boost: 'boost',
-    fold: 'fold',
-    thin: 'thin',
-    fat: 'fat',
+    bitcrush: 'crush',
+    clip: 'shape-clip',
+    boost: 'shape-boost',
+    fold: 'shape-fold',
+    thin: 'shape-thin',
+    fat: 'shape-fat',
 })
-addNumeric(f, o, 'argument', 5, 1, 10, false, 1)
+addNumeric(f, o, 'argument', 5, 1, 20, false, 1)
 o.folder.expanded = false
 
 
@@ -417,7 +432,14 @@ function playSound() {
     }]
 
     if (params.carrier.crush > 0) {
-        program[0].crush = params.carrier.crush | 0
+        program[0].effect = 'crush-' + (params.carrier.crush | 0)
+    }
+
+
+    if (params.distort1.folder.expanded) {
+        var d1 = params.distort1.type
+        var d1a = params.distort1.argument
+        program[0].effect = `${d1}-${d1a}`
     }
 
 
@@ -452,7 +474,7 @@ function playSound() {
         program[0].freq.push({
             type: params.tremolo.type,
             freq: params.tremolo.frequency,
-            gain: params.tremolo.depth,
+            gain: { t: params.tremolo.depth },
         })
     }
 
@@ -485,10 +507,10 @@ function playSound() {
         })
     }
 
-    if (params.distort.folder.expanded) {
-        program.push({
-            type: `shape-${params.distort.type}-${params.distort.argument}`,
-        })
+    if (params.distort2.folder.expanded) {
+        var d2 = params.distort2.type
+        var d2a = params.distort2.argument
+        program.push(`${d2}-${d2a}`)
     }
 
     if (params.effect1.folder.expanded) {
