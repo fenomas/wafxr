@@ -4,6 +4,8 @@ var $ = document.querySelector.bind(document)
 var Tweakpane = require('tweakpane')
 import './presets'
 
+import { version } from '../package.json'
+$('#ver').innerHTML = `v${version}`
 
 export var pane1 = new Tweakpane({ container: $('.settings1') })
 export var pane2 = new Tweakpane({ container: $('.settings2') })
