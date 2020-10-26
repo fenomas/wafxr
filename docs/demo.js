@@ -405,6 +405,7 @@ function playSound() {
         window.gen = gen // so that playback code will run in console
         window.ctx = ctx
     }
+    if (ctx.state !== 'running') ctx.resume()
 
     // overall play duration
     var duration = params.carrier.attack
@@ -418,8 +419,21 @@ function playSound() {
     var wait = Math.min(Math.max(0.25, duration / 2), 1.5)
     nextSoundCutoff = t + wait * 1000
 
-    // play the sound
-    if (ctx.state !== 'running') ctx.resume()
+    // build program from params
+    var program = buildProgram()
+    program.forEach(prog => formatProgramObject(prog))
+
+    // play!
+    var freq = fmt(params.main.frequency)
+    var vel = fmt(params.main.velocity)
+    var dur = fmt(duration)
+    var now = gen.now() + 0.15
+    gen.play(program, freq, vel, now, now + dur)
+    writeCode(program, freq, vel, dur)
+}
+
+
+function buildProgram() {
 
     var program = [{
         type: params.carrier.type,
@@ -533,16 +547,7 @@ function playSound() {
             Q: params.effect2.q,
         })
     }
-
-    program.forEach(prog => formatProgramObject(prog))
-
-    var freq = fmt(params.main.frequency)
-    var vel = fmt(params.main.velocity)
-    var dur = fmt(duration)
-    var now = gen.now() + 0.15
-
-    gen.play(program, freq, vel, now, now + dur)
-    writeCode(program, freq, vel, dur)
+    return program
 }
 
 
@@ -621,4 +626,79 @@ function roundNums(obj) {
 }
 
 
+
+
+
+/*
+ *
+ *
+ *
+ *          experimenting with rendering -> offlineContext -> WAV
+ *
+ *
+ *
+*/
+
+var renderBut = $('.render')
+var anchor
+renderBut.onclick = async () => {
+    if (!OfflineAudioContext) {
+        renderBut.textContent = 'Not supported in your browser, sorry!'
+        return
+    }
+
+    // play and overall duration
+    var playDur = params.carrier.attack
+        + params.carrier.hold
+        + params.carrier.decay
+        + params.carrier.duration
+    var totalDur = playDur
+        + params.carrier.release * 5 // magic number!
+    var rate = 44100
+    var ctx = new OfflineAudioContext(2, totalDur * rate, rate)
+    var gen = new Generator(ctx, ctx.destination)
+
+    // build program from params
+    var program = buildProgram()
+    program.forEach(prog => formatProgramObject(prog))
+
+    // play args
+    var freq = fmt(params.main.frequency)
+    var vel = fmt(params.main.velocity)
+    var dur = fmt(playDur)
+    var now = 0
+    writeCode(program, freq, vel, dur)
+
+    // pausing here lets wasgen init bitcrusher audioworklet..
+    if (/crush/.test(JSON.stringify(program))) await sleep(100)
+
+    // play logic
+    gen.play(program, freq, vel, now, now + dur)
+    var buffer = await ctx.startRendering()
+
+    // yoink: https://github.com/Jam3/audiobuffer-to-wav/blob/master/demo/index.js
+    if (!anchor) {
+        anchor = document.createElement('a')
+        document.body.appendChild(anchor)
+        anchor.style = 'display: none'
+    }
+
+    var bufferToWav = require('audiobuffer-to-wav')
+    var wav = bufferToWav(buffer)
+    var blob = new window.Blob([new DataView(wav)], {
+        type: 'audio/wav'
+    })
+
+    var url = window.URL.createObjectURL(blob)
+    anchor.href = url
+    anchor.download = 'audio.wav'
+    anchor.click()
+    window.URL.revokeObjectURL(url)
+
+    gen.dispose()
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
 
