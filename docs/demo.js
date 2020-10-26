@@ -656,7 +656,7 @@ renderBut.onclick = async () => {
         + params.carrier.release * 5 // magic number!
     var rate = 44100
     var ctx = new OfflineAudioContext(2, totalDur * rate, rate)
-    var gen = new Generator(ctx, ctx.destination)
+    var gen = new Generator(ctx, ctx.destination, false, true)
 
     // build program from params
     var program = buildProgram()
