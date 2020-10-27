@@ -1,6 +1,6 @@
 {
   "name": "wafxr",
-  "version": "0.17.0",
+  "version": "0.17.2",
   "description": "webaudio sound effects",
   "main": "src/wafxr.js",
   "files": [
@@ -22,7 +22,7 @@
     "url": "https://github.com/andyhall/wafxr"
   },
   "dependencies": {
-    "wasgen": "^0.17.0"
+    "wasgen": "^0.17.2"
   },
   "devDependencies": {
     "audiobuffer-to-wav": "^1.0.0",

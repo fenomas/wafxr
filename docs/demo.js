@@ -293,7 +293,7 @@ function refreshPanes() {
 }
 
 // params are all set up now, so refresh the log values
-refreshPanes(true)
+refreshPanes()
 
 
 
@@ -316,7 +316,7 @@ function beginEditingParams() {
 }
 
 function finishEditingParams() {
-    refreshPanes(true)
+    refreshPanes()
     playSound()
     ignoreParamEvents = false
 }
@@ -325,7 +325,7 @@ function finishEditingParams() {
 // general event for all param changes
 function onParamChange() {
     if (ignoreParamEvents) return
-    refreshPanes(false)
+    refreshPanes()
     playSound(params)
 }
 pane1.on('change', onParamChange)
@@ -408,10 +408,9 @@ function playSound() {
     if (ctx.state !== 'running') ctx.resume()
 
     // overall play duration
-    var duration = params.carrier.attack
+    var duration = params.carrier.duration
+        + params.carrier.attack
         + params.carrier.hold
-        + params.carrier.decay
-        + params.carrier.duration
 
     // debounce
     var t = performance.now()
@@ -555,9 +554,9 @@ function fmt(num) {
     var sign = (num < 0) ? -1 : 1
     num = Math.abs(num)
     if (num < 0.002) return 0
-    if (num > 10) return sign * Math.round(num)
-    if (num > 1) return sign * Math.round(num * 10) / 10
-    if (num > 0.1) return sign * Math.round(num * 100) / 100
+    if (num > 20) return sign * Math.round(num)
+    if (num > 2) return sign * Math.round(num * 10) / 10
+    if (num > 0.2) return sign * Math.round(num * 100) / 100
     return sign * Math.round(num * 1000) / 1000
 }
 
@@ -648,10 +647,9 @@ renderBut.onclick = async () => {
     }
 
     // play and overall duration
-    var playDur = params.carrier.attack
+    var playDur = params.carrier.duration
+        + params.carrier.attack
         + params.carrier.hold
-        + params.carrier.decay
-        + params.carrier.duration
     var totalDur = playDur
         + params.carrier.release * 5 // magic number!
         + 0.01 // arbitrarily pad the end a tad
