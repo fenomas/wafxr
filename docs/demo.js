@@ -654,8 +654,10 @@ renderBut.onclick = async () => {
         + params.carrier.duration
     var totalDur = playDur
         + params.carrier.release * 5 // magic number!
+        + 0.01 // arbitrarily pad the end a tad
     var rate = 44100
-    var ctx = new OfflineAudioContext(2, totalDur * rate, rate)
+    var samples = (totalDur * rate) | 0
+    var ctx = new OfflineAudioContext(2, samples, rate)
     var gen = new Generator(ctx, ctx.destination, false, true)
 
     // build program from params
@@ -666,7 +668,7 @@ renderBut.onclick = async () => {
     var freq = fmt(params.main.frequency)
     var vel = fmt(params.main.velocity)
     var dur = fmt(playDur)
-    var now = 0
+    var now = 5 / 44100
     writeCode(program, freq, vel, dur)
 
     // pausing here lets wasgen init bitcrusher audioworklet..
