@@ -17,10 +17,7 @@
     "js"
   ],
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/fenomas/wafxr"
-  },
+  "repository": "github:fenomas/wafxr",
   "dependencies": {
     "wasgen": "^0.17.2"
   },
