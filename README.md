@@ -1,7 +1,7 @@
 
 # wafxr
 
-> [Live demo](https://andyhall.github.io/wafxr/)
+> [Live demo](https://fenomas.github.io/wafxr/)
 
 `wafxr` is a sound effect generator in the tradition of 
 [as3fxr](http://www.superflashbros.net/as3sfxr/), 
@@ -14,15 +14,15 @@ this one plays sounds dynamically via Web Audio.
 Supports oscillators, FM synth, tremolo/vibrato, and various other 
 filters and effects. If you need more complicated sounds 
 (and you're comfortable building audio graphs), 
-check out [`wasgen`](https://github.com/andyhall/wasgen) instead.
+check out [`wasgen`](https://github.com/fenomas/wasgen) instead.
 
 
 ## Usage
 
-Open the [demo](https://andyhall.github.io/wafxr/) and 
+Open the [demo](https://fenomas.github.io/wafxr/) and 
 twiddle the UI until you have a sound you like. 
 Then copy the `playback code` into your project, 
-add [wasgen](https://github.com/andyhall/wasgen) as a dependency, 
+add [wasgen](https://github.com/fenomas/wasgen) as a dependency, 
 and off you go.
 
 ```shell

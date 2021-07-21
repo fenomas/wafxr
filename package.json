@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "start": "cd docs && webpack-dev-server",
-    "build": "cd docs && webpack -p"
+    "build": "cd docs && webpack --env prod"
   },
   "author": "Andy Hall",
   "keywords": [
@@ -19,7 +19,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/andyhall/wafxr"
+    "url": "https://github.com/fenomas/wafxr"
   },
   "dependencies": {
     "wasgen": "^0.17.2"
