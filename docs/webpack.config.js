@@ -1,8 +1,8 @@
 
+
 var path = require('path')
 var entryPath = path.resolve('.', 'demo.js')
 var buildPath = path.resolve('.')
-var buildFilename = 'bundle.js'
 
 
 module.exports = (env) => ({
@@ -16,19 +16,11 @@ module.exports = (env) => ({
 
 	output: {
 		path: buildPath,
-		filename: buildFilename,
+		filename: 'bundle.js',
 	},
-
-	watchOptions: {
-		aggregateTimeout: 500,
-		poll: 1000,
-		ignored: ["node_modules"],
-	},
-
+	stats: "minimal",
 	devServer: {
-		contentBase: buildPath,
-		inline: true,
+		static: buildPath,
 		host: "0.0.0.0",
-		stats: "minimal",
 	},
 })

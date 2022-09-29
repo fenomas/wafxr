@@ -1,6 +1,6 @@
 {
   "name": "wafxr",
-  "version": "0.17.2",
+  "version": "0.18.2",
   "description": "webaudio sound effects",
   "main": "src/wafxr.js",
   "files": [
@@ -19,7 +19,7 @@
   "license": "ISC",
   "repository": "github:fenomas/wafxr",
   "dependencies": {
-    "wasgen": "^0.17.2"
+    "wasgen": "^0.18.2"
   },
   "devDependencies": {
     "audiobuffer-to-wav": "^1.0.0",

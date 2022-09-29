@@ -4,10 +4,13 @@ var $ = document.querySelector.bind(document)
 var Tweakpane = require('tweakpane')
 import './presets'
 
-import { version } from '../package.json'
+import packageData from '../package.json'
+var version = packageData.version
 $('#ver').innerHTML = `v${version}`
 
+// @ts-ignore - ??
 export var pane1 = new Tweakpane({ container: $('.settings1') })
+// @ts-ignore - ??
 export var pane2 = new Tweakpane({ container: $('.settings2') })
 export var params = {}
 
@@ -326,7 +329,7 @@ function finishEditingParams() {
 function onParamChange() {
     if (ignoreParamEvents) return
     refreshPanes()
-    playSound(params)
+    playSound()
 }
 pane1.on('change', onParamChange)
 pane2.on('change', onParamChange)
@@ -338,7 +341,8 @@ window.onkeydown = (ev) => {
     if (ev.key === 'Tab') return
     if (ev.key === 'Shift') return
     var focused = document.activeElement
-    if (focused && /text/.test(focused.type)) return
+    var focType = (focused && focused['type']) || ''
+    if (/text/.test(focType)) return
 
     var freq = params.main.frequency
     if (ev.key === ' ') {
@@ -388,8 +392,8 @@ window.onkeydown = (ev) => {
 */
 
 
-// import Generator from '../../wasgen'
-import Generator from 'wasgen'
+import Generator from '../../wasgen'
+// import Generator from 'wasgen'
 
 var nextSoundCutoff = -1000
 var gen, ctx
@@ -398,12 +402,13 @@ function playSound() {
     $('.hint').style.display = 'none'
 
     if (!gen) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)()
+        ctx = new (window.AudioContext || window['webkitAudioContext'])()
         var dest = ctx.createGain()
         dest.connect(ctx.destination)
         gen = new Generator(ctx, dest)
-        window.gen = gen // so that playback code will run in console
-        window.ctx = ctx
+        window['gen'] = gen // so that playback code will run in console
+        window['ctx'] = ctx
+        $('#ver').innerHTML += `  --  wasgen v${gen.version}`
     }
     if (ctx.state !== 'running') ctx.resume()
 
@@ -434,6 +439,7 @@ function playSound() {
 
 function buildProgram() {
 
+    /** @type {*} */
     var program = [{
         type: params.carrier.type,
         freq: [],
@@ -680,7 +686,7 @@ renderBut.onclick = async () => {
     if (!anchor) {
         anchor = document.createElement('a')
         document.body.appendChild(anchor)
-        anchor.style = 'display: none'
+        anchor.style.display = 'none'
     }
 
     var bufferToWav = require('audiobuffer-to-wav')
